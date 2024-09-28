@@ -1,14 +1,15 @@
-import {Devvit, TriggerContext, User, UserNoteLabel} from "@devvit/public-api";
+import {Context, Devvit, FormField, FormOnSubmitEvent, TriggerContext, User, UserNoteLabel, WikiPage} from "@devvit/public-api";
 import {addSeconds, format} from "date-fns";
 import pluralize from "pluralize";
 import {decompressBlob, ToolboxClient, Usernotes} from "toolbox-devvit";
+import {RawSubredditConfig} from "toolbox-devvit/dist/types/RawSubredditConfig.js";
 
 interface NoteTypeMapping {
     key: string,
     value: UserNoteLabel
 }
 
-const noteTypeMapping: NoteTypeMapping[] = [
+const defaultNoteTypeMapping: NoteTypeMapping[] = [
     {key: "gooduser", value: "HELPFUL_USER"},
     {key: "watch", value: "SPAM_WATCH"},
     {key: "warning", value: "SPAM_WARNING"},
@@ -18,12 +19,89 @@ const noteTypeMapping: NoteTypeMapping[] = [
     {key: "bot_ban", value: "BOT_BAN"},
 ];
 
+interface RedditNativeLabel {
+    label: string,
+    value: UserNoteLabel,
+}
+
+const redditNativeLabels: RedditNativeLabel[] = [
+    {label: "Bot Ban", value: "BOT_BAN"},
+    {label: "Permaban", value: "PERMA_BAN"},
+    {label: "Ban", value: "BAN"},
+    {label: "Abuse Warning", value: "ABUSE_WARNING"},
+    {label: "Spam Warning", value: "SPAM_WARNING"},
+    {label: "Spam Watch", value: "SPAM_WATCH"},
+    {label: "Solid Contributor", value: "SOLID_CONTRIBUTOR"},
+    {label: "Helpful User", value: "HELPFUL_USER"},
+];
+
 const NOTES_QUEUE = "NotesQueue";
+const MAPPING_KEY = "UsernoteLabelMapping";
+
+Devvit.addTrigger({
+    event: "AppInstall",
+    onEvent: async (event, context) => {
+        await context.redis.set(MAPPING_KEY, JSON.stringify(defaultNoteTypeMapping));
+    },
+});
+
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+const mapUsernoteTypesForm = Devvit.createForm(data => ({fields: data.fields, title: data.title}), mapUsernoteTypesFormHandler);
+
+async function checkUsernoteTypesMapped (context: Context): Promise<boolean> {
+    const subreddit = await context.reddit.getCurrentSubreddit();
+    let wikiPage: WikiPage | undefined;
+    try {
+        wikiPage = await context.reddit.getWikiPage(subreddit.name, "toolbox");
+    } catch {
+        context.ui.showToast("Toolbox config wiki page was not found.");
+        return false;
+    }
+
+    const toolboxConfig = JSON.parse(wikiPage.content) as RawSubredditConfig;
+
+    const usernoteTypes = toolboxConfig.usernoteColors;
+
+    const existingMappingValues = await context.redis.get(MAPPING_KEY);
+    const existingMapping: NoteTypeMapping[] = [];
+    if (existingMappingValues) {
+        console.log(existingMappingValues);
+        existingMapping.push(...(JSON.parse(existingMappingValues) as NoteTypeMapping[]));
+    }
+
+    // Are all user note labels mapped?
+    if (usernoteTypes.every(type => existingMapping.some(x => x.key === type.key))) {
+        // return true;
+    }
+
+    const fields: FormField[] = usernoteTypes.map(type => ({
+        name: type.key,
+        label: type.text,
+        type: "select",
+        options: redditNativeLabels,
+        value: [existingMapping.find(mapping => mapping.key === type.key)?.value],
+        multiSelect: false,
+        required: true,
+    }));
+
+    console.log(JSON.stringify(fields));
+
+    context.ui.showForm(mapUsernoteTypesForm, {fields, title: "Please choose mappings for Usernote types"});
+
+    return false;
+}
+
+async function mapUsernoteTypesFormHandler (event: FormOnSubmitEvent, context: Context) {
+    return;
+}
 
 Devvit.addMenuItem({
     location: "subreddit",
     label: "Start Usernotes Transfer",
     onPress: async (event, context) => {
+        await checkUsernoteTypesMapped(context);
+        return;
+
         const notesQueue = await context.redis.zRange(NOTES_QUEUE, 0, -1);
         if (notesQueue.length) {
             context.ui.showToast(`Import is already in progress! ${notesQueue.length} users still to go.`);
@@ -58,7 +136,7 @@ function thingIdFromPermalink (permalink?: string): string | undefined {
     }
 
     const regex = /\/comments\/(\w{1,8})\/\w+\/(\w{1,8})?/;
-    const matches = permalink.match(regex);
+    const matches = regex.exec(permalink);
     if (!matches) {
         return;
     }
@@ -74,7 +152,7 @@ function thingIdFromPermalink (permalink?: string): string | undefined {
 
 async function transferNotesForUser (username: string, subreddit: string, usernotes: Usernotes, context: TriggerContext) {
     const usersNotes = usernotes.get(username).filter(x => x.contextPermalink);
-    if (!usersNotes) {
+    if (usersNotes.length === 0) {
         return;
     }
 
@@ -93,11 +171,10 @@ async function transferNotesForUser (username: string, subreddit: string, userno
     let added = 0;
 
     for (const usernote of usersNotes.filter(x => x.contextPermalink)) {
-        const label = noteTypeMapping.find(x => x.key === usernote.noteType);
+        const label = defaultNoteTypeMapping.find(x => x.key === usernote.noteType);
         const redditId = thingIdFromPermalink(usernote.contextPermalink);
 
         if (label && redditId) {
-            // eslint-disable-next-line no-await-in-loop
             await context.reddit.addModNote({
                 label: label.value,
                 note: `${usernote.text}, added by ${usernote.moderatorUsername} on ${format(usernote.timestamp, "yyyy-MM-dd")}`,
@@ -126,9 +203,7 @@ Devvit.addSchedulerJob({
         const allUserNotes = await toolbox.getUsernotes(subreddit.name);
 
         for (const user of queue.map(queueItem => queueItem.member)) {
-            // eslint-disable-next-line no-await-in-loop
             await transferNotesForUser(user, subreddit.name, allUserNotes, context);
-            // eslint-disable-next-line no-await-in-loop
             await context.redis.zRem(NOTES_QUEUE, [user]);
         }
 
