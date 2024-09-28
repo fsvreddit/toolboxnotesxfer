@@ -1,2 +1,2 @@
-# toolboxnotesxfer
-Devvit app to transfer Toolbox usernotes to native Reddit mod notes
+A Devvit app to transfer Toolbox usernotes to native Reddit mod notes
+
