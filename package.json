@@ -4,6 +4,10 @@
   "version": "0.0.0",
   "license": "BSD-3-Clause",
   "type": "module",
+  "scripts": {
+    "test": "npm run test:unit",
+    "test:unit": "vitest --run"
+  },
   "dependencies": {
     "@devvit/public-api": "0.11.0-next-2024-09-27-a055089c2.0",
     "@types/lodash": "^4.17.9",

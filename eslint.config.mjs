@@ -1,6 +1,7 @@
 import eslint from "@eslint/js";
 import tseslint from "typescript-eslint";
 import stylistic from '@stylistic/eslint-plugin'
+import vitest from "@vitest/eslint-plugin"
 
 export default tseslint.config(
     eslint.configs.recommended,
@@ -13,6 +14,17 @@ export default tseslint.config(
         quoteProps: "consistent-as-needed",
         braceStyle: "1tbs",
     }),
+    {
+        files: ["**/*.test.ts"],
+        plugins: {
+            vitest
+        },
+        rules: {
+            ...vitest.configs.recommended.rules,
+            'vitest/valid-title': 'warn',
+            'vitest/no-commented-out-tests': 'warn'
+        }
+    },
     {
         files: ["**/*.ts", "**/*.tsx"],
 
