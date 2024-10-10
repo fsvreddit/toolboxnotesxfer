@@ -12,6 +12,7 @@ export const mapUsernoteTypesForm = Devvit.createForm(data => ({ fields: data.fi
 Devvit.addMenuItem({
     location: "subreddit",
     label: "Start Usernotes Transfer",
+    forUserType: "moderator",
     onPress: startTransferMenuHandler,
 });
 
