@@ -159,16 +159,14 @@ async function transferNotesForUser (username: string, subreddit: string, userno
             user: username,
         });
 
-        if (label) {
-            await context.reddit.addModNote({
-                label: label.value,
-                note: `${usernote.text}, added by ${usernote.moderatorUsername} on ${format(usernote.timestamp, "yyyy-MM-dd")}`,
-                redditId,
-                subreddit,
-                user: username,
-            });
-            added++;
-        }
+        await context.reddit.addModNote({
+            label: label?.value,
+            note: `${usernote.text}, added by ${usernote.moderatorUsername} on ${format(usernote.timestamp, "yyyy-MM-dd")}`,
+            redditId,
+            subreddit,
+            user: username,
+        });
+        added++;
     }
 
     await context.redis.incrBy(USERS_TRANSFERRED, 1);
