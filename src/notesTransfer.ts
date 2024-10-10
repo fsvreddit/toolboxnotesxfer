@@ -1,59 +1,34 @@
-import { Context, FormField, FormOnSubmitEvent, JSONObject, MenuItemOnPressEvent, ScheduledJobEvent, TriggerContext, User, UserNoteLabel } from "@devvit/public-api";
-import { AppInstall } from "@devvit/protos";
-import { FINISHED_TRANSFER, MAPPING_KEY, NOTES_QUEUE } from "./constants.js";
+import { Context, FormField, FormOnSubmitEvent, JobContext, JSONObject, MenuItemOnPressEvent, TriggerContext, User, UserNoteLabel, WikiPage, WikiPagePermissionLevel } from "@devvit/public-api";
+import { defaultNoteTypeMapping, FINISHED_TRANSFER, MAPPING_KEY, NOTES_QUEUE, NOTES_TRANSFERRED, redditNativeLabels, USERS_TRANSFERRED, WIKI_PAGE_NAME } from "./constants.js";
 import { RawSubredditConfig, RawUsernoteType } from "toolbox-devvit/dist/types/RawSubredditConfig.js";
 import { mapUsernoteTypesForm } from "./main.js";
-import { decompressBlob, ToolboxClient, Usernotes } from "toolbox-devvit";
 import { addSeconds, format } from "date-fns";
 import { thingIdFromPermalink } from "./utility.js";
+import { decompressBlob, ToolboxClient, Usernotes } from "toolbox-devvit";
 import pluralize from "pluralize";
 import _ from "lodash";
 
-interface NoteTypeMapping {
+export interface NoteTypeMapping {
     key: string;
     value: UserNoteLabel;
 }
 
-interface RedditNativeLabel {
+export interface RedditNativeLabel {
     label: string;
     value: UserNoteLabel;
 }
 
-const defaultNoteTypeMapping: NoteTypeMapping[] = [
-    { key: "gooduser", value: "HELPFUL_USER" },
-    { key: "watch", value: "SPAM_WATCH" },
-    { key: "warning", value: "SPAM_WARNING" },
-    { key: "abusewarn", value: "ABUSE_WARNING" },
-    { key: "ban", value: "BAN" },
-    { key: "permban", value: "PERMA_BAN" },
-    { key: "bot_ban", value: "BOT_BAN" },
-];
-
-const redditNativeLabels: RedditNativeLabel[] = [
-    { label: "Bot Ban", value: "BOT_BAN" },
-    { label: "Permaban", value: "PERMA_BAN" },
-    { label: "Ban", value: "BAN" },
-    { label: "Abuse Warning", value: "ABUSE_WARNING" },
-    { label: "Spam Warning", value: "SPAM_WARNING" },
-    { label: "Spam Watch", value: "SPAM_WATCH" },
-    { label: "Solid Contributor", value: "SOLID_CONTRIBUTOR" },
-    { label: "Helpful User", value: "HELPFUL_USER" },
-];
-
-export async function storeDefaultMappingOnInstall (event: AppInstall, context: TriggerContext) {
-    await context.redis.set(MAPPING_KEY, JSON.stringify(defaultNoteTypeMapping));
-}
-
 export async function startTransferMenuHandler (_: MenuItemOnPressEvent, context: Context) {
-    const notesQueue = await context.redis.zRange(NOTES_QUEUE, 0, -1);
-    if (notesQueue.length) {
-        context.ui.showToast(`Import is already in progress! ${notesQueue.length} users still to go.`);
+    const notesQueueLength = await context.redis.zCard(NOTES_QUEUE);
+    if (notesQueueLength) {
+        context.ui.showToast(`Import is already in progress! ${notesQueueLength} users still to go.`);
         return;
     }
 
     const finishedTransfer = await context.redis.get(FINISHED_TRANSFER);
     if (finishedTransfer) {
         context.ui.showToast(`A transfer has already been done for this subreddit.`);
+        return;
     }
 
     await checkUsernoteTypesMapped(context);
@@ -118,7 +93,6 @@ async function checkUsernoteTypesMapped (context: Context) {
 }
 
 export async function mapUsernoteTypesFormHandler (event: FormOnSubmitEvent<JSONObject>, context: Context) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     const values = event.values as Record<string, [string]>;
     const mappings = _.toPairs(values).map(mapping => ({ key: mapping[0], value: mapping[1][0] } as NoteTypeMapping));
     const usernoteTypes = await getToolboxUsernoteTypes(context);
@@ -197,13 +171,17 @@ async function transferNotesForUser (username: string, subreddit: string, userno
         }
     }
 
+    await context.redis.incrBy(USERS_TRANSFERRED, 1);
+    await context.redis.incrBy(NOTES_TRANSFERRED, added);
+
     console.log(`Added ${added} mod ${pluralize("note", added)} for ${username}`);
 }
 
-export async function transferUserBatch (_: ScheduledJobEvent<undefined>, context: TriggerContext) {
+export async function transferUserBatch (_: unknown, context: JobContext) {
     const queue = await context.redis.zRange(NOTES_QUEUE, 0, 50);
     if (queue.length === 0) {
         console.log("Queue is empty!");
+        await finishTransfer(context);
         return;
     }
 
@@ -224,12 +202,72 @@ export async function transferUserBatch (_: ScheduledJobEvent<undefined>, contex
 
     console.log(`Processed ${queue.length} ${pluralize("user", queue.length)}. Queueing further checks`);
 
-    if (queue.length > 0) {
-        await context.scheduler.runJob({
-            name: "TransferUsers",
-            runAt: addSeconds(new Date(), 30),
-        });
-    } else {
-        await context.redis.set(FINISHED_TRANSFER, new Date().getTime().toString());
+    await context.scheduler.runJob({
+        name: "TransferUsers",
+        runAt: addSeconds(new Date(), 30),
+    });
+}
+
+async function finishTransfer (context: JobContext) {
+    const completedDate = new Date().getTime();
+    await context.redis.set(FINISHED_TRANSFER, new Date().getTime().toString());
+
+    const subredditName = context.subredditName ?? (await context.reddit.getCurrentSubreddit()).name;
+
+    // Store completed date in the wiki, to allow for future incremental updates.
+    // It's important not to use Redis here to preserve data if app is uninstalled.
+    let wikiPage: WikiPage | undefined;
+    try {
+        wikiPage = await context.reddit.getWikiPage(subredditName, WIKI_PAGE_NAME);
+    } catch {
+        //
     }
+
+    const wikiSaveOptions = {
+        subredditName,
+        page: WIKI_PAGE_NAME,
+        content: JSON.stringify({ completedDate }),
+        reason: "Storing completion date for transfer",
+    };
+
+    if (wikiPage) {
+        await context.reddit.updateWikiPage(wikiSaveOptions);
+    } else {
+        await context.reddit.createWikiPage(wikiSaveOptions);
+        await context.reddit.updateWikiPageSettings({
+            subredditName,
+            page: WIKI_PAGE_NAME,
+            listed: false,
+            permLevel: WikiPagePermissionLevel.MODS_ONLY,
+        });
+    }
+
+    await context.reddit.createWikiPage({
+        subredditName,
+        page: WIKI_PAGE_NAME,
+        content: JSON.stringify({ completedDate }),
+        reason: "Storing completion date for transfer",
+    });
+
+    const notesTransferredVal = await context.redis.get(NOTES_TRANSFERRED);
+    const usersTransferredVal = await context.redis.get(USERS_TRANSFERRED);
+
+    let message = "All Toolbox usernotes have been transferred to Mod Notes.\n\n";
+
+    if (notesTransferredVal && usersTransferredVal) {
+        const notesTransferred = parseInt(notesTransferredVal);
+        const usersTransferred = parseInt(usersTransferredVal);
+        message += `${notesTransferred} ${pluralize("note", notesTransferred)} ${pluralize("was", notesTransferred)} transferred for ${usersTransferred} ${pluralize("user", usersTransferred)}\n\n`;
+    } else {
+        message += "No notes were found to transfer.\n\n";
+    }
+
+    message += "Notes were transferred for active users only. Notes for suspended, shadowbanned or deleted users were not transferred.\n\n";
+    message += "This app can now be uninstalled.\n\n";
+
+    await context.reddit.sendPrivateMessage({
+        to: `/r/${subredditName}`,
+        subject: "Toolbox usernotes transfer has completed!",
+        text: message,
+    });
 }
