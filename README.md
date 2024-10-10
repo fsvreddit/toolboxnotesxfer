@@ -16,7 +16,7 @@ If you try and start a new transfer after a transfer has completed, it will not 
 
 This app can only record notes as if they were added at the time of transfer, and by /u/toolboxnotesxfer. This means that the dates/times of notes will always be wrong.
 
-As a result, all usernotes transferred using this method will have text appended e.g. "original note text> added by actualmod on 2024-03-15".
+As a result, all usernotes transferred using this method will have text appended e.g. "original note text, added by actualmod on 2024-03-15".
 
 ![Example of mod note with text appended](https://github.com/fsvreddit/toolboxnotesxfer/blob/main/doc_images/ModNote.png)
 
