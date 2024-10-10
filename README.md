@@ -18,7 +18,7 @@ This app can only record notes as if they were added at the time of transfer, an
 
 As a result, all usernotes transferred using this method will have text appended e.g. "original note text, added by actualmod on 2024-03-15".
 
-![Example of mod note with text appended](https://github.com/fsvreddit/toolboxnotesxfer/blob/main/doc_images/ModNote.png)
+![Example of mod note with text appended](https://raw.githubusercontent.com/fsvreddit/toolboxnotesxfer/main/doc_images/ModNote.png)
 
 If a note is linked to content other than a post or comment (e.g. a note created from modmail), that link will be removed (Reddit's mod notes can only link to posts or comments).
 
