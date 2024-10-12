@@ -1,6 +1,6 @@
 A Devvit app to transfer Toolbox usernotes to native Reddit mod notes
 
-This app can do a one-off transfer of Toolbox usernotes to Reddit mod notes. To start a transfer, click the subreddit context menu and choose "Start Usernotes Transfer".
+This app can transfer Toolbox usernotes to Reddit mod notes. To start a transfer, click the subreddit context menu and choose "Start Usernotes Transfer".
 
 You may be prompted to map your Toolbox usernote categories to native Reddit ones, depending on how your sub has configured Toolbox.
 
@@ -10,7 +10,7 @@ Once all notes have transferred, this app will create a "Mod Discussions" conver
 
 If you press the "Start Transfer" button again while a transfer is in progress, it won't start again. You will instead be told how many users still need notes transferring.
 
-If you try and start a new transfer after a transfer has completed, it will not work (notes can only be transferred once to avoid duplication).
+If you try and start a new transfer after a transfer has completed, the app will check for usernotes made since the previous transfer and only transfer those.
 
 ## Limitations
 
