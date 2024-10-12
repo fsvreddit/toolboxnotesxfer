@@ -18,7 +18,7 @@ If you try and start a new transfer after a transfer has completed, the app will
 
 Once an initial bulk transfer has completed, you can use the same process to transfer any additional notes added since the first transfer completed.
 
-## Live synchronisation from Toolbox usernotes to Reddit mod notes
+## Live synchronisation of new Toolbox usernotes to Reddit mod notes
 
 Once an initial bulk transfer has completed, you can choose to synchronise newly added Toolbox notes to Reddit mod notes as they are added. This must be enabled in app settings.
 
