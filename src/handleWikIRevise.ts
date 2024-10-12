@@ -3,6 +3,7 @@ import { ModAction } from "@devvit/protos";
 import { AppSetting } from "./settings.js";
 import { FINISHED_TRANSFER, MAPPING_KEY, WIKI_PAGE_REVISION } from "./constants.js";
 import { finishTransfer, getAllNotes, NoteTypeMapping, transferNotesForUser, usersWithNotesSince } from "./notesTransfer.js";
+import pluralize from "pluralize";
 
 export async function handleWikiRevise (event: ModAction, context: TriggerContext) {
     if (event.action !== "wikirevise" || !event.subreddit || event.moderator?.name === context.appName) {
@@ -39,7 +40,7 @@ export async function handleWikiRevise (event: ModAction, context: TriggerContex
         return;
     }
 
-    console.log(`New notes for ${usersToProcess.length} exist.`);
+    console.log(`New notes for ${usersToProcess.length} ${pluralize("user", usersToProcess.length)} exist.`);
 
     const noteTypeMappingValue = await context.redis.get(MAPPING_KEY);
 
