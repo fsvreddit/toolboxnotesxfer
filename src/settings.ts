@@ -8,7 +8,7 @@ export const appSettings: SettingsFormField[] = [
     {
         name: AppSetting.AutomaticIncrementalTransfer,
         type: "boolean",
-        label: "Incrementally transfer new Toolbox notes as they are made",
+        label: "Incrementally transfer new Toolbox notes to mod notes as they are made",
         helpText: "Only takes effect once a full transfer has been done.",
         defaultValue: false,
     },

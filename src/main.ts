@@ -1,8 +1,8 @@
 import { Devvit, FormField } from "@devvit/public-api";
-import { mapUsernoteTypesFormHandler, startTransfer, startTransferMenuHandler, transferUserBatch } from "./notesTransfer.js";
+import { mapUsernoteTypesFormHandler, startTransfer, startTransferMenuHandler, transferUserBatch } from "./interactiveTransfer.js";
 import { handleInstall } from "./installActions.js";
 import { appSettings } from "./settings.js";
-import { handleModAction } from "./handleModAction.js";
+import { handleWikiRevise } from "./handleWikIRevise.js";
 
 Devvit.addSettings(appSettings);
 
@@ -13,7 +13,7 @@ Devvit.addTrigger({
 
 Devvit.addTrigger({
     event: "ModAction",
-    onEvent: handleModAction,
+    onEvent: handleWikiRevise,
 });
 
 export const mapUsernoteTypesForm = Devvit.createForm(data => ({ fields: data.fields as FormField[], title: data.title as string }), mapUsernoteTypesFormHandler);
