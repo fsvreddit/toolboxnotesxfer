@@ -65,7 +65,7 @@ async function checkUsernoteTypesMapped (context: Context) {
         options: redditNativeLabels,
         defaultValue: getMapping(type.key, existingMapping),
         multiSelect: false,
-        required: true,
+        required: false,
     }));
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
