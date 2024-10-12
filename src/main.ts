@@ -1,10 +1,19 @@
 import { Devvit, FormField } from "@devvit/public-api";
 import { mapUsernoteTypesFormHandler, startTransfer, startTransferMenuHandler, transferUserBatch } from "./notesTransfer.js";
 import { handleInstall } from "./installActions.js";
+import { appSettings } from "./settings.js";
+import { handleModAction } from "./handleModAction.js";
+
+Devvit.addSettings(appSettings);
 
 Devvit.addTrigger({
     event: "AppInstall",
     onEvent: handleInstall,
+});
+
+Devvit.addTrigger({
+    event: "ModAction",
+    onEvent: handleModAction,
 });
 
 export const mapUsernoteTypesForm = Devvit.createForm(data => ({ fields: data.fields as FormField[], title: data.title as string }), mapUsernoteTypesFormHandler);

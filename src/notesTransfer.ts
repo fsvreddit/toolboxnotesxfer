@@ -103,13 +103,13 @@ export async function mapUsernoteTypesFormHandler (event: FormOnSubmitEvent<JSON
     await showConfirmationForm(context);
 }
 
-async function getAllNotes (context: TriggerContext): Promise<Usernotes> {
+export async function getAllNotes (context: TriggerContext): Promise<Usernotes> {
     const toolbox = new ToolboxClient(context.reddit);
     const subredditName = context.subredditName ?? (await context.reddit.getCurrentSubreddit()).name;
     return await toolbox.getUsernotes(subredditName);
 }
 
-function usersWithNotesSince (allUserNotes: Usernotes, since: Date): string[] {
+export function usersWithNotesSince (allUserNotes: Usernotes, since: Date): string[] {
     const distinctUsers = Object.keys(decompressBlob(allUserNotes.toJSON().blob));
 
     return distinctUsers.filter(user => allUserNotes.get(user).some(note => note.timestamp > since));
@@ -167,7 +167,7 @@ export async function startTransfer (_: FormOnSubmitEvent<JSONObject>, context: 
     });
 }
 
-async function transferNotesForUser (username: string, subreddit: string, usernotes: Usernotes, noteTypeMapping: NoteTypeMapping[], transferSince: Date | undefined, context: TriggerContext) {
+export async function transferNotesForUser (username: string, subreddit: string, usernotes: Usernotes, noteTypeMapping: NoteTypeMapping[], transferSince: Date | undefined, context: TriggerContext) {
     let usersNotes = usernotes.get(username);
 
     if (transferSince) {
@@ -218,7 +218,7 @@ export async function transferUserBatch (_: unknown, context: JobContext) {
     const queue = await context.redis.zRange(NOTES_QUEUE, 0, batchSize - 1);
     if (queue.length === 0) {
         console.log("Queue is empty!");
-        await finishTransfer(context);
+        await finishTransfer(true, context);
         return;
     }
 
@@ -250,7 +250,7 @@ export async function transferUserBatch (_: unknown, context: JobContext) {
     });
 }
 
-async function finishTransfer (context: JobContext) {
+export async function finishTransfer (sendModmail: boolean, context: JobContext) {
     const completedDate = new Date().getTime();
     await context.redis.set(FINISHED_TRANSFER, new Date().getTime().toString());
 
@@ -284,12 +284,9 @@ async function finishTransfer (context: JobContext) {
         });
     }
 
-    await context.reddit.createWikiPage({
-        subredditName,
-        page: WIKI_PAGE_NAME,
-        content: JSON.stringify({ completedDate }),
-        reason: "Storing completion date for transfer",
-    });
+    if (!sendModmail) {
+        return;
+    }
 
     const notesTransferredVal = await context.redis.get(NOTES_TRANSFERRED);
     const usersTransferredVal = await context.redis.get(USERS_TRANSFERRED);

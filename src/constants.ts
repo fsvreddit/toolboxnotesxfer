@@ -7,6 +7,7 @@ export const USERS_TRANSFERRED = "UsersTransferred";
 export const NOTES_TRANSFERRED = "NotesTransferred";
 
 export const WIKI_PAGE_NAME = "toolboxnotesxfer";
+export const WIKI_PAGE_REVISION = "wikiPageRevision";
 
 export const defaultNoteTypeMapping: NoteTypeMapping[] = [
     { key: "gooduser", value: "HELPFUL_USER" },
