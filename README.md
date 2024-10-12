@@ -34,6 +34,8 @@ If a note is linked to content other than a post or comment (e.g. a note created
 
 Usernotes can only be transferred for active users. Suspended, shadowbanned and deleted users will be skipped.
 
+A live synchronisation back from Reddit mod notes to Toolbox is unfortunately not practical as the notes added that way would be transferred the other way again by incremental transfers or the usernote->mod note sync process.
+
 ## Source Code and acknowledgements
 
 This app is open source, you can find it on GitHub [here](https://github.com/fsvreddit/toolboxnotesxfer).
