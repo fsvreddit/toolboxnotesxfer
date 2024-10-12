@@ -1,10 +1,10 @@
 import { Context, FormField, FormOnSubmitEvent, JobContext, JSONObject, MenuItemOnPressEvent, TriggerContext, User, UserNoteLabel, WikiPage, WikiPagePermissionLevel } from "@devvit/public-api";
 import { defaultNoteTypeMapping, FINISHED_TRANSFER, MAPPING_KEY, NOTES_QUEUE, NOTES_TRANSFERRED, redditNativeLabels, USERS_TRANSFERRED, WIKI_PAGE_NAME } from "./constants.js";
 import { RawSubredditConfig, RawUsernoteType } from "toolbox-devvit/dist/types/RawSubredditConfig.js";
-import { mapUsernoteTypesForm } from "./main.js";
+import { confirmForm, mapUsernoteTypesForm } from "./main.js";
 import { addSeconds, format } from "date-fns";
 import { thingIdFromPermalink } from "./utility.js";
-import { decompressBlob, ToolboxClient, Usernotes } from "toolbox-devvit";
+import { decompressBlob, RawUsernotesUsers, ToolboxClient, Usernotes } from "toolbox-devvit";
 import pluralize from "pluralize";
 import _ from "lodash";
 
@@ -35,8 +35,8 @@ export async function startTransferMenuHandler (_: MenuItemOnPressEvent, context
 }
 
 async function getToolboxUsernoteTypes (context: TriggerContext): Promise<RawUsernoteType[]> {
-    const subreddit = await context.reddit.getCurrentSubreddit();
-    const wikiPage = await context.reddit.getWikiPage(subreddit.name, "toolbox");
+    const subredditName = context.subredditName ?? (await context.reddit.getCurrentSubreddit()).name;
+    const wikiPage = await context.reddit.getWikiPage(subredditName, "toolbox");
 
     const toolboxConfig = JSON.parse(wikiPage.content) as RawSubredditConfig;
 
@@ -70,7 +70,7 @@ async function checkUsernoteTypesMapped (context: Context) {
 
     // Are all user note labels mapped?
     if (usernoteTypes.every(type => existingMapping.some(x => x.key === type.key))) {
-        await startTransfer(context);
+        await showConfirmationForm(context);
         return true;
     }
 
@@ -106,21 +106,33 @@ export async function mapUsernoteTypesFormHandler (event: FormOnSubmitEvent<JSON
     // Save mappings.
     await context.redis.set(MAPPING_KEY, JSON.stringify(mappings));
 
-    await startTransfer(context);
+    await showConfirmationForm(context);
 }
 
-async function startTransfer (context: Context) {
+async function getRawNotes (context: Context): Promise<RawUsernotesUsers> {
     const toolbox = new ToolboxClient(context.reddit);
-    const subreddit = await context.reddit.getCurrentSubreddit();
-    const allUserNotes = await toolbox.getUsernotes(subreddit.name);
-    const distinctUsers = Object.keys(decompressBlob(allUserNotes.toJSON().blob));
+    const subredditName = context.subredditName ?? (await context.reddit.getCurrentSubreddit()).name;
+    const allUserNotes = await toolbox.getUsernotes(subredditName);
+    return decompressBlob(allUserNotes.toJSON().blob);
+}
+
+async function showConfirmationForm (context: Context) {
+    const rawNotes = await getRawNotes(context);
+    const distinctUsers = Object.keys(rawNotes);
     if (distinctUsers.length === 0) {
         context.ui.showToast("No usernotes need transferring.");
         return;
     }
 
+    context.ui.showForm(confirmForm, { description: `There are ${distinctUsers.length} ${pluralize("user", distinctUsers.length)} with notes. Do you want to proceed with transfer?` });
+}
+
+export async function startTransfer (_: FormOnSubmitEvent<JSONObject>, context: Context) {
+    const distinctUsers = Object.keys(await getRawNotes(context));
+
+    context.ui.showToast("Notes will now be transferred in the background. A modmail will be sent on completion.");
+
     await context.redis.zAdd(NOTES_QUEUE, ...distinctUsers.map(user => ({ member: user, score: 0 })));
-    context.ui.showToast(`Queued ${distinctUsers.length} ${pluralize("user", distinctUsers.length)} for processing.`);
     await context.scheduler.runJob({
         name: "TransferUsers",
         runAt: addSeconds(new Date(), 1),
@@ -130,6 +142,7 @@ async function startTransfer (context: Context) {
 async function transferNotesForUser (username: string, subreddit: string, usernotes: Usernotes, noteTypeMapping: NoteTypeMapping[], context: TriggerContext) {
     const usersNotes = usernotes.get(username);
     if (usersNotes.length === 0) {
+        // Shouldn't be possible if we got here.
         return;
     }
 
@@ -151,14 +164,6 @@ async function transferNotesForUser (username: string, subreddit: string, userno
         const label = noteTypeMapping.find(x => x.key === usernote.noteType);
         const redditId = thingIdFromPermalink(usernote.contextPermalink);
 
-        console.log({
-            label: label?.value,
-            note: `${usernote.text}, added by ${usernote.moderatorUsername} on ${format(usernote.timestamp, "yyyy-MM-dd")}`,
-            redditId,
-            subreddit,
-            user: username,
-        });
-
         await context.reddit.addModNote({
             label: label?.value,
             note: `${usernote.text}, added by ${usernote.moderatorUsername} on ${format(usernote.timestamp, "yyyy-MM-dd")}`,
@@ -176,7 +181,8 @@ async function transferNotesForUser (username: string, subreddit: string, userno
 }
 
 export async function transferUserBatch (_: unknown, context: JobContext) {
-    const queue = await context.redis.zRange(NOTES_QUEUE, 0, 50);
+    const batchSize = 50;
+    const queue = await context.redis.zRange(NOTES_QUEUE, 0, batchSize - 1);
     if (queue.length === 0) {
         console.log("Queue is empty!");
         await finishTransfer(context);
@@ -184,8 +190,8 @@ export async function transferUserBatch (_: unknown, context: JobContext) {
     }
 
     const toolbox = new ToolboxClient(context.reddit);
-    const subreddit = await context.reddit.getCurrentSubreddit();
-    const allUserNotes = await toolbox.getUsernotes(subreddit.name);
+    const subredditName = context.subredditName ?? (await context.reddit.getCurrentSubreddit()).name;
+    const allUserNotes = await toolbox.getUsernotes(subredditName);
     const noteTypeMappingValue = await context.redis.get(MAPPING_KEY);
 
     let noteTypeMapping: NoteTypeMapping[] = [];
@@ -194,7 +200,7 @@ export async function transferUserBatch (_: unknown, context: JobContext) {
     }
 
     for (const user of queue.map(queueItem => queueItem.member)) {
-        await transferNotesForUser(user, subreddit.name, allUserNotes, noteTypeMapping, context);
+        await transferNotesForUser(user, subredditName, allUserNotes, noteTypeMapping, context);
         await context.redis.zRem(NOTES_QUEUE, [user]);
     }
 
@@ -268,4 +274,6 @@ async function finishTransfer (context: JobContext) {
         subject: "Toolbox usernotes transfer has completed!",
         text: message,
     });
+
+    console.log("Modmail sent.");
 }

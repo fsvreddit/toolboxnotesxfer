@@ -1,5 +1,5 @@
 import { Devvit, FormField } from "@devvit/public-api";
-import { mapUsernoteTypesFormHandler, startTransferMenuHandler, transferUserBatch } from "./notesTransfer.js";
+import { mapUsernoteTypesFormHandler, startTransfer, startTransferMenuHandler, transferUserBatch } from "./notesTransfer.js";
 import { handleInstall } from "./installActions.js";
 
 Devvit.addTrigger({
@@ -8,6 +8,8 @@ Devvit.addTrigger({
 });
 
 export const mapUsernoteTypesForm = Devvit.createForm(data => ({ fields: data.fields as FormField[], title: data.title as string }), mapUsernoteTypesFormHandler);
+
+export const confirmForm = Devvit.createForm(data => ({ fields: [], title: "Ready to transfer", description: data.description as string }), startTransfer);
 
 Devvit.addMenuItem({
     location: "subreddit",

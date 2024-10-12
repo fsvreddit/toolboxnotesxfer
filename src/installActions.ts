@@ -20,10 +20,10 @@ export async function handleInstall (_: AppInstall, context: TriggerContext) {
 
     console.log("App has previously been used! Storing previous completion date.");
 
-    const result = JSON.parse(wikiPage.content) as { completedDate?: string };
+    const result = JSON.parse(wikiPage.content) as { completedDate?: number };
 
     const finishedTransferDate = result.completedDate;
     if (finishedTransferDate) {
-        await context.redis.set(FINISHED_TRANSFER, finishedTransferDate);
+        await context.redis.set(FINISHED_TRANSFER, finishedTransferDate.toString());
     }
 }
