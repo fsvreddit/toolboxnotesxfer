@@ -1,6 +1,6 @@
 import { Context, FormField, FormOnSubmitEvent, JobContext, JSONObject, MenuItemOnPressEvent, TriggerContext } from "@devvit/public-api";
-import { defaultNoteTypeMapping, FINISHED_TRANSFER, MAPPING_KEY, NOTES_QUEUE, NOTES_TRANSFERRED, redditNativeLabels, USERS_TRANSFERRED } from "./constants.js";
-import { finishTransfer, getAllNotes, NoteTypeMapping, transferNotesForUser, usersWithNotesSince } from "./notesTransfer.js";
+import { FINISHED_TRANSFER, MAPPING_KEY, NOTES_QUEUE, NOTES_TRANSFERRED, USERS_TRANSFERRED } from "./constants.js";
+import { defaultNoteTypeMapping, finishTransfer, getAllNotes, NoteTypeMapping, redditNativeLabels, transferNotesForUser, usersWithNotesSince } from "./notesTransfer.js";
 import { addSeconds, formatDate } from "date-fns";
 import pluralize from "pluralize";
 import { decompressBlob } from "toolbox-devvit";

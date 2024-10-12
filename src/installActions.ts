@@ -1,6 +1,7 @@
 import { TriggerContext, WikiPage } from "@devvit/public-api";
 import { AppInstall } from "@devvit/protos";
-import { defaultNoteTypeMapping, FINISHED_TRANSFER, MAPPING_KEY, WIKI_PAGE_NAME } from "./constants.js";
+import { FINISHED_TRANSFER, MAPPING_KEY, WIKI_PAGE_NAME } from "./constants.js";
+import { defaultNoteTypeMapping } from "./notesTransfer.js";
 
 export async function handleInstall (_: AppInstall, context: TriggerContext) {
     await context.redis.set(MAPPING_KEY, JSON.stringify(defaultNoteTypeMapping));
