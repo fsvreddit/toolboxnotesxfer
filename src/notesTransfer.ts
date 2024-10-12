@@ -1,7 +1,7 @@
 import { JobContext, TriggerContext, User, UserNoteLabel, WikiPage, WikiPagePermissionLevel } from "@devvit/public-api";
 import { FINISHED_TRANSFER, NOTES_TRANSFERRED, USERS_TRANSFERRED, WIKI_PAGE_NAME } from "./constants.js";
-import { format, isSameDay } from "date-fns";
 import { thingIdFromPermalink } from "./utility.js";
+import { format, isSameDay } from "date-fns";
 import { decompressBlob, ToolboxClient, Usernotes } from "toolbox-devvit";
 import pluralize from "pluralize";
 

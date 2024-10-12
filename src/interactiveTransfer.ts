@@ -1,10 +1,10 @@
 import { Context, FormField, FormOnSubmitEvent, JobContext, JSONObject, MenuItemOnPressEvent, TriggerContext } from "@devvit/public-api";
 import { FINISHED_TRANSFER, MAPPING_KEY, NOTES_QUEUE, NOTES_TRANSFERRED, USERS_TRANSFERRED } from "./constants.js";
 import { defaultNoteTypeMapping, finishTransfer, getAllNotes, NoteTypeMapping, redditNativeLabels, transferNotesForUser, usersWithNotesSince } from "./notesTransfer.js";
+import { confirmForm, mapUsernoteTypesForm } from "./main.js";
 import { addSeconds, formatDate } from "date-fns";
 import pluralize from "pluralize";
 import { decompressBlob } from "toolbox-devvit";
-import { confirmForm, mapUsernoteTypesForm } from "./main.js";
 import { RawSubredditConfig, RawUsernoteType } from "toolbox-devvit/dist/types/RawSubredditConfig.js";
 import _ from "lodash";
 
