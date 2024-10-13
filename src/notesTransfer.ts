@@ -50,7 +50,7 @@ export function usersWithNotesSince (allUserNotes: Usernotes, since: Date): stri
     return distinctUsers.filter(user => allUserNotes.get(user).some(note => note.timestamp > since));
 }
 
-export function thingIdFromPermalink (permalink?: string): `t1_${string}` | `t3_${string}` | undefined {
+export function redditIdFromPermalink (permalink?: string): `t1_${string}` | `t3_${string}` | undefined {
     if (!permalink) {
         return;
     }
@@ -98,7 +98,7 @@ export async function transferNotesForUser (username: string, subreddit: string,
 
     for (const usernote of usersNotes) {
         const label = noteTypeMapping.find(x => x.key === usernote.noteType);
-        const redditId = thingIdFromPermalink(usernote.contextPermalink);
+        const redditId = redditIdFromPermalink(usernote.contextPermalink);
 
         let noteText = `${usernote.text}, added by ${usernote.moderatorUsername}`;
         if (!isSameDay(usernote.timestamp, new Date())) {
