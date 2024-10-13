@@ -1,10 +1,12 @@
 A Devvit app to transfer and synchronise Toolbox usernotes to native Reddit mod notes
 
+This app supports bulk transfer of notes from Toolbox to Reddit mod notes, and once that's completed can also do incremental one-off transfers or live synchronisation of newly added notes in either or both direction.
+
 ## Bulk Transfer
 
 This app can transfer Toolbox usernotes to Reddit mod notes in bulk. To start a transfer, click the subreddit context menu and choose "Start Usernotes Transfer".
 
-You may be prompted to map your Toolbox usernote categories to native Reddit ones, depending on how your sub has configured Toolbox.
+You may be prompted to map your Toolbox usernote categories to native Reddit ones, depending on how your sub has configured Toolbox. If you do not choose a mapping for a usernote category, notes with that category will be transferred without a note type set.
 
 Notes will then transfer in the background. Depending on the number of usernotes on your subreddit, it can take a substantial amount of time, ranging from minutes to hours on subreddits that have used notes heavily for years.
 
