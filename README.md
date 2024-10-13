@@ -1,4 +1,4 @@
-A Devvit app to transfer Toolbox usernotes to native Reddit mod notes
+A Devvit app to transfer and synchronise Toolbox usernotes to native Reddit mod notes
 
 ## Bulk Transfer
 
@@ -35,8 +35,6 @@ As a result, all usernotes transferred using this method will have text appended
 If a note is linked to content other than a post or comment (e.g. a note created from modmail), that link will be removed (Reddit's mod notes can only link to posts or comments).
 
 Usernotes can only be transferred for active users. Suspended, shadowbanned and deleted users will be skipped.
-
-A live synchronisation back from Reddit mod notes to Toolbox is unfortunately not practical as the notes added that way would be transferred the other way again by incremental transfers or the usernote->mod note sync process.
 
 ## Source Code and acknowledgements
 
