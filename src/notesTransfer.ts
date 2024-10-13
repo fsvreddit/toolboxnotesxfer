@@ -1,5 +1,5 @@
 import { JobContext, TriggerContext, User, UserNoteLabel, WikiPage, WikiPagePermissionLevel } from "@devvit/public-api";
-import { FINISHED_TRANSFER, NOTES_TRANSFERRED, USERS_TRANSFERRED, WIKI_PAGE_NAME } from "./constants.js";
+import { FINISHED_TRANSFER, NOTES_TRANSFERRED, UPDATE_WIKI_PAGE_FLAG, USERS_TRANSFERRED, WIKI_PAGE_NAME } from "./constants.js";
 import { thingIdFromPermalink } from "./utility.js";
 import { format, isSameDay } from "date-fns";
 import { decompressBlob, ToolboxClient, Usernotes } from "toolbox-devvit";
@@ -99,9 +99,20 @@ export async function transferNotesForUser (username: string, subreddit: string,
     console.log(`Added ${added} mod ${pluralize("note", added)} for ${username}`);
 }
 
-export async function finishTransfer (context: JobContext) {
+export async function updateWikiPage (_: unknown, context: JobContext) {
+    const wikiPageNeedsUpdate = await context.redis.get(UPDATE_WIKI_PAGE_FLAG);
+    if (wikiPageNeedsUpdate) {
+        await finishTransfer(true, context);
+    }
+}
+
+export async function finishTransfer (updateWikiPage: boolean, context: JobContext) {
     const completedDate = new Date().getTime();
     await context.redis.set(FINISHED_TRANSFER, new Date().getTime().toString());
+
+    if (!updateWikiPage) {
+        return;
+    }
 
     const subredditName = context.subredditName ?? (await context.reddit.getCurrentSubreddit()).name;
 
@@ -132,4 +143,6 @@ export async function finishTransfer (context: JobContext) {
             permLevel: WikiPagePermissionLevel.MODS_ONLY,
         });
     }
+
+    await context.redis.del(UPDATE_WIKI_PAGE_FLAG);
 }

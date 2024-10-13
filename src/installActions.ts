@@ -27,4 +27,12 @@ export async function handleInstall (_: AppInstall, context: TriggerContext) {
     if (finishedTransferDate) {
         await context.redis.set(FINISHED_TRANSFER, finishedTransferDate.toString());
     }
+
+    const jobs = await context.scheduler.listJobs();
+    await Promise.all(jobs.map(job => context.scheduler.cancelJob(job.id)));
+
+    await context.scheduler.runJob({
+        name: "updateWikiPage",
+        cron: "0 0 * * *",
+    });
 }

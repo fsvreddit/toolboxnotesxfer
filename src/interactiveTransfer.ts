@@ -150,7 +150,7 @@ export async function transferUserBatch (_: unknown, context: JobContext) {
     const queue = await context.redis.zRange(NOTES_QUEUE, 0, batchSize - 1);
     if (queue.length === 0) {
         console.log("Queue is empty!");
-        await finishTransfer(context);
+        await finishTransfer(true, context);
         await sendModmail(context);
         return;
     }

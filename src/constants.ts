@@ -6,3 +6,4 @@ export const NOTES_TRANSFERRED = "NotesTransferred";
 
 export const WIKI_PAGE_NAME = "toolboxnotesxfer";
 export const WIKI_PAGE_REVISION = "wikiPageRevision";
+export const UPDATE_WIKI_PAGE_FLAG = "wikiPageUpdate";

@@ -1,22 +1,27 @@
 import { TriggerContext } from "@devvit/public-api";
 import { ModAction } from "@devvit/protos";
 import { AppSetting } from "./settings.js";
-import { FINISHED_TRANSFER, MAPPING_KEY, WIKI_PAGE_REVISION } from "./constants.js";
+import { FINISHED_TRANSFER, MAPPING_KEY, UPDATE_WIKI_PAGE_FLAG, WIKI_PAGE_REVISION } from "./constants.js";
 import { finishTransfer, getAllNotes, NoteTypeMapping, transferNotesForUser, usersWithNotesSince } from "./notesTransfer.js";
 import pluralize from "pluralize";
 
 export async function handleWikiRevise (event: ModAction, context: TriggerContext) {
-    if (event.action !== "wikirevise" || !event.subreddit || event.moderator?.name === context.appName) {
+    if (event.action !== "wikirevise" || !event.subreddit) {
         return;
     }
 
     const settings = await context.settings.getAll();
-    if (!settings[AppSetting.AutomaticIncrementalTransfer]) {
+    if (!settings[AppSetting.AutomaticForwardTransfer]) {
         return;
     }
 
     const transferCompleteVal = await context.redis.get(FINISHED_TRANSFER);
     if (!transferCompleteVal) {
+        return;
+    }
+
+    if (event.moderator?.name === context.appName) {
+        await finishTransfer(false, context);
         return;
     }
 
@@ -37,6 +42,7 @@ export async function handleWikiRevise (event: ModAction, context: TriggerContex
 
     if (usersToProcess.length === 0) {
         console.log("No new notes.");
+        await finishTransfer(false, context);
         return;
     }
 
@@ -54,5 +60,6 @@ export async function handleWikiRevise (event: ModAction, context: TriggerContex
     }
 
     await context.redis.set(WIKI_PAGE_REVISION, wikiPage.revisionId);
-    await finishTransfer(context);
+    await context.redis.set(UPDATE_WIKI_PAGE_FLAG, "true");
+    await finishTransfer(false, context);
 }

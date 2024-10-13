@@ -2,7 +2,8 @@ import { Devvit, FormField } from "@devvit/public-api";
 import { mapUsernoteTypesFormHandler, startTransfer, startTransferMenuHandler, transferUserBatch } from "./interactiveTransfer.js";
 import { handleInstall } from "./installActions.js";
 import { appSettings } from "./settings.js";
-import { handleWikiRevise } from "./handleWikIRevise.js";
+import { handleModActions } from "./handleModActions.js";
+import { updateWikiPage } from "./notesTransfer.js";
 
 Devvit.addSettings(appSettings);
 
@@ -13,7 +14,7 @@ Devvit.addTrigger({
 
 Devvit.addTrigger({
     event: "ModAction",
-    onEvent: handleWikiRevise,
+    onEvent: handleModActions,
 });
 
 export const mapUsernoteTypesForm = Devvit.createForm(data => ({ fields: data.fields as FormField[], title: data.title as string }), mapUsernoteTypesFormHandler);
@@ -30,6 +31,11 @@ Devvit.addMenuItem({
 Devvit.addSchedulerJob({
     name: "TransferUsers",
     onRun: transferUserBatch,
+});
+
+Devvit.addSchedulerJob({
+    name: "updateWikiPage",
+    onRun: updateWikiPage,
 });
 
 Devvit.configure({
