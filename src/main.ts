@@ -1,6 +1,6 @@
 import { Devvit, FormField } from "@devvit/public-api";
 import { mapUsernoteTypesFormHandler, startTransfer, startTransferMenuHandler, transferUserBatch } from "./interactiveTransfer.js";
-import { handleInstall } from "./installActions.js";
+import { handleInstall, handleInstallOrUpgrade } from "./installActions.js";
 import { appSettings } from "./settings.js";
 import { handleModActions } from "./handleModActions.js";
 import { updateWikiPage } from "./notesTransfer.js";
@@ -10,6 +10,11 @@ Devvit.addSettings(appSettings);
 Devvit.addTrigger({
     event: "AppInstall",
     onEvent: handleInstall,
+});
+
+Devvit.addTrigger({
+    events: ["AppInstall", "AppUpgrade"],
+    onEvent: handleInstallOrUpgrade,
 });
 
 Devvit.addTrigger({

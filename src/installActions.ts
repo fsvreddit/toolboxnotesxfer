@@ -1,5 +1,5 @@
 import { TriggerContext, WikiPage } from "@devvit/public-api";
-import { AppInstall } from "@devvit/protos";
+import { AppInstall, AppUpgrade } from "@devvit/protos";
 import { FINISHED_TRANSFER, MAPPING_KEY, NOTES_QUEUE, WIKI_PAGE_NAME } from "./constants.js";
 import { defaultNoteTypeMapping } from "./notesTransfer.js";
 
@@ -19,7 +19,7 @@ export async function handleInstall (_: AppInstall, context: TriggerContext) {
         return;
     }
 
-    console.log("App has previously been used! Storing previous completion date.");
+    console.log("Install: App has previously been used! Storing previous completion date.");
 
     const result = JSON.parse(wikiPage.content) as { completedDate?: number };
 
@@ -27,7 +27,9 @@ export async function handleInstall (_: AppInstall, context: TriggerContext) {
     if (finishedTransferDate) {
         await context.redis.set(FINISHED_TRANSFER, finishedTransferDate.toString());
     }
+}
 
+export async function handleInstallOrUpgrade (_: AppInstall | AppUpgrade, context: TriggerContext) {
     const jobs = await context.scheduler.listJobs();
     await Promise.all(jobs.map(job => context.scheduler.cancelJob(job.id)));
 
@@ -43,4 +45,6 @@ export async function handleInstall (_: AppInstall, context: TriggerContext) {
             runAt: new Date(),
         });
     }
+
+    console.log("Install: App has been upgraded. Jobs rescheduled.");
 }
