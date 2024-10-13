@@ -106,11 +106,11 @@ export async function updateWikiPage (_: unknown, context: JobContext) {
     }
 }
 
-export async function finishTransfer (updateWikiPage: boolean, context: JobContext) {
+export async function finishTransfer (updateWikiPageNow: boolean, context: JobContext) {
     const completedDate = new Date().getTime();
     await context.redis.set(FINISHED_TRANSFER, new Date().getTime().toString());
 
-    if (!updateWikiPage) {
+    if (!updateWikiPageNow) {
         await context.redis.set(UPDATE_WIKI_PAGE_FLAG, "true");
         return;
     }
