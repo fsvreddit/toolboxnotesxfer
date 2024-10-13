@@ -2,9 +2,9 @@ import { ModAction } from "@devvit/protos";
 import { TriggerContext } from "@devvit/public-api";
 import { defaultNoteTypeMapping, finishTransfer, NoteTypeMapping } from "./notesTransfer.js";
 import { FINISHED_TRANSFER, MAPPING_KEY } from "./constants.js";
+import { AppSetting } from "./settings.js";
 import { ToolboxClient, UsernoteInit } from "toolbox-devvit";
 import { isCommentId, isLinkId } from "@devvit/shared-types/tid.js";
-import { AppSetting } from "./settings.js";
 import { addHours } from "date-fns";
 
 export async function handleAddNote (event: ModAction, context: TriggerContext) {

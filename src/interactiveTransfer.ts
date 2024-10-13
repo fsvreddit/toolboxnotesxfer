@@ -109,7 +109,7 @@ async function showConfirmationForm (context: Context) {
         return;
     }
 
-    let confirmationMessage: string | undefined;
+    let confirmationMessage: string;
 
     const lastFinishedTimeVal = await context.redis.get(FINISHED_TRANSFER);
     if (lastFinishedTimeVal) {
@@ -185,10 +185,17 @@ export async function transferUserBatch (_: unknown, context: JobContext) {
 
     console.log(`Interactive Transfer: Processed ${queue.length} ${pluralize("user", queue.length)}. Queueing further checks`);
 
-    await context.scheduler.runJob({
-        name: "TransferUsers",
-        runAt: addSeconds(new Date(), 30),
-    });
+    if (queue.length < batchSize) {
+        // This was the last batch.
+        console.log("Interactive Transfer: Finished transfer!");
+        await finishTransfer(true, context);
+        await sendModmail(context);
+    } else {
+        await context.scheduler.runJob({
+            name: "TransferUsers",
+            runAt: addSeconds(new Date(), 30),
+        });
+    }
 }
 
 async function sendModmail (context: TriggerContext) {
