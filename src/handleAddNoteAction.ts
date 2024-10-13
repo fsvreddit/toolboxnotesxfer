@@ -5,6 +5,7 @@ import { FINISHED_TRANSFER, MAPPING_KEY } from "./constants.js";
 import { ToolboxClient, UsernoteInit } from "toolbox-devvit";
 import { isCommentId, isLinkId } from "@devvit/shared-types/tid.js";
 import { AppSetting } from "./settings.js";
+import { addHours } from "date-fns";
 
 export async function handleAddNote (event: ModAction, context: TriggerContext) {
     if (event.action !== "addnote" || !event.subreddit || !event.targetUser || event.moderator?.name === context.appName) {
@@ -38,6 +39,12 @@ export async function handleAddNote (event: ModAction, context: TriggerContext) 
         return;
     }
 
+    const redisKey = `transferredNote~${modNote.id}`;
+    const alreadyProcessed = await context.redis.get(redisKey);
+    if (alreadyProcessed) {
+        return;
+    }
+
     console.log(`New mod note added on ${modNote.user.name}. Transferring back to Toolbox.`);
 
     const existingMappingValues = await context.redis.get(MAPPING_KEY);
@@ -66,6 +73,8 @@ export async function handleAddNote (event: ModAction, context: TriggerContext) 
 
     const toolbox = new ToolboxClient(context.reddit);
     await toolbox.addUsernote(subredditName, newUserNote, `"create new note on ${modNote.user.name}" via Toolbox Notes Transfer`);
+
+    await context.redis.set(redisKey, new Date().getTime.toString(), { expiration: addHours(new Date(), 6) });
 }
 
 async function getPermalinkFromRedditId (redditId: string | undefined, context: TriggerContext) {
