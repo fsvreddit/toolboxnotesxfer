@@ -42,6 +42,7 @@ export async function handleWikiRevise (event: ModAction, context: TriggerContex
 
     if (usersToProcess.length === 0) {
         console.log("Wiki Revise: No new notes.");
+        await context.redis.set(WIKI_PAGE_REVISION, wikiPage.revisionId);
         await finishTransfer(false, context);
         return;
     }
