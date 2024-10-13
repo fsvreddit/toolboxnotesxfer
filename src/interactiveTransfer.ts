@@ -2,6 +2,7 @@ import { Context, FormField, FormOnSubmitEvent, JobContext, JSONObject, MenuItem
 import { FINISHED_TRANSFER, MAPPING_KEY, NOTES_QUEUE, NOTES_TRANSFERRED, USERS_TRANSFERRED } from "./constants.js";
 import { defaultNoteTypeMapping, finishTransfer, getAllNotes, NoteTypeMapping, redditNativeLabels, transferNotesForUser, usersWithNotesSince } from "./notesTransfer.js";
 import { confirmForm, mapUsernoteTypesForm } from "./main.js";
+import { AppSetting } from "./settings.js";
 import { addSeconds, formatDate } from "date-fns";
 import pluralize from "pluralize";
 import { decompressBlob } from "toolbox-devvit";
@@ -200,6 +201,12 @@ async function sendModmail (context: TriggerContext) {
     }
 
     message += "Notes were transferred for active users only. Notes for suspended, shadowbanned or deleted users were not transferred.\n\n";
+
+    const settings = await context.settings.getAll();
+    if (!settings[AppSetting.AutomaticForwardTransfer] && !settings[AppSetting.AutomaticReverseTransfer]) {
+        message += "Did you know? This app can do bidirectional synchronisation of new notes between Toolbox and native Mod Notees.";
+        message += ` If you would find this useful, you can enable it [here](https://developers.reddit.com/r/${subredditName}/apps/toolboxnotesxfer).\n\n`;
+    }
 
     await context.reddit.sendPrivateMessage({
         to: `/r/${subredditName}`,
