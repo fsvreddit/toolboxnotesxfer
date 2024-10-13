@@ -111,6 +111,7 @@ export async function finishTransfer (updateWikiPage: boolean, context: JobConte
     await context.redis.set(FINISHED_TRANSFER, new Date().getTime().toString());
 
     if (!updateWikiPage) {
+        await context.redis.set(UPDATE_WIKI_PAGE_FLAG, "true");
         return;
     }
 

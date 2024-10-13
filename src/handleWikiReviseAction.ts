@@ -10,6 +10,11 @@ export async function handleWikiRevise (event: ModAction, context: TriggerContex
         return;
     }
 
+    if (event.moderator?.name === context.appName) {
+        await finishTransfer(false, context);
+        return;
+    }
+
     const settings = await context.settings.getAll();
     if (!settings[AppSetting.AutomaticForwardTransfer]) {
         return;
@@ -17,11 +22,6 @@ export async function handleWikiRevise (event: ModAction, context: TriggerContex
 
     const transferCompleteVal = await context.redis.get(FINISHED_TRANSFER);
     if (!transferCompleteVal) {
-        return;
-    }
-
-    if (event.moderator?.name === context.appName) {
-        await finishTransfer(false, context);
         return;
     }
 
