@@ -65,7 +65,7 @@ async function checkUsernoteTypesMapped (context: Context) {
     // Are all user note labels mapped?
     if (usernoteTypes.every(type => existingMapping.some(x => x.key === type.key))) {
         await showConfirmationForm(context);
-        return true;
+        return;
     }
 
     const fields: FormField[] = usernoteTypes.map(type => ({
@@ -75,15 +75,13 @@ async function checkUsernoteTypesMapped (context: Context) {
         options: redditNativeLabels,
         defaultValue: getMapping(type.key, existingMapping),
         multiSelect: false,
-        required: false,
+        required: true,
     }));
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data: Record<string, any> = { fields, title: "Please choose mappings for Usernote types" };
 
     context.ui.showForm(mapUsernoteTypesForm, data);
-
-    return false;
 }
 
 export async function mapUsernoteTypesFormHandler (event: FormOnSubmitEvent<JSONObject>, context: Context) {
