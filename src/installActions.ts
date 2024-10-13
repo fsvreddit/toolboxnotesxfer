@@ -1,6 +1,6 @@
 import { TriggerContext, WikiPage } from "@devvit/public-api";
 import { AppInstall } from "@devvit/protos";
-import { FINISHED_TRANSFER, MAPPING_KEY, WIKI_PAGE_NAME } from "./constants.js";
+import { FINISHED_TRANSFER, MAPPING_KEY, NOTES_QUEUE, WIKI_PAGE_NAME } from "./constants.js";
 import { defaultNoteTypeMapping } from "./notesTransfer.js";
 
 export async function handleInstall (_: AppInstall, context: TriggerContext) {
@@ -35,4 +35,12 @@ export async function handleInstall (_: AppInstall, context: TriggerContext) {
         name: "updateWikiPage",
         cron: "0 0 * * *",
     });
+
+    const queuedNotes = await context.redis.zCard(NOTES_QUEUE);
+    if (queuedNotes) {
+        await context.scheduler.runJob({
+            name: "TransferUsers",
+            runAt: new Date(),
+        });
+    }
 }
