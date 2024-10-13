@@ -204,7 +204,7 @@ async function sendModmail (context: TriggerContext) {
 
     const settings = await context.settings.getAll();
     if (!settings[AppSetting.AutomaticForwardTransfer] && !settings[AppSetting.AutomaticReverseTransfer]) {
-        message += "Did you know? This app can do bidirectional synchronisation of new notes between Toolbox and native Mod Notees.";
+        message += "Did you know? This app can do bidirectional synchronisation of new notes between Toolbox and native Mod Notes.";
         message += ` If you would find this useful, you can enable it [here](https://developers.reddit.com/r/${subredditName}/apps/toolboxnotesxfer).\n\n`;
     }
 
