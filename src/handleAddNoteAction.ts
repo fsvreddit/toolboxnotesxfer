@@ -1,6 +1,6 @@
 import { ModAction } from "@devvit/protos";
 import { TriggerContext } from "@devvit/public-api";
-import { defaultNoteTypeMapping, NoteTypeMapping } from "./notesTransfer.js";
+import { defaultNoteTypeMapping, finishTransfer, NoteTypeMapping } from "./notesTransfer.js";
 import { FINISHED_TRANSFER, MAPPING_KEY } from "./constants.js";
 import { ToolboxClient, UsernoteInit } from "toolbox-devvit";
 import { isCommentId, isLinkId } from "@devvit/shared-types/tid.js";
@@ -73,6 +73,7 @@ export async function handleAddNote (event: ModAction, context: TriggerContext) 
 
     const toolbox = new ToolboxClient(context.reddit);
     await toolbox.addUsernote(subredditName, newUserNote, `"create new note on ${modNote.user.name}" via Toolbox Notes Transfer`);
+    await finishTransfer(false, context);
 
     await context.redis.set(redisKey, new Date().getTime.toString(), { expiration: addHours(new Date(), 6) });
 }

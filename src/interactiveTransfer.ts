@@ -16,6 +16,15 @@ export async function startTransferMenuHandler (_: MenuItemOnPressEvent, context
         return;
     }
 
+    const transferCompleteVal = await context.redis.get(FINISHED_TRANSFER);
+    if (transferCompleteVal) {
+        const settings = await context.settings.getAll();
+        if (settings[AppSetting.AutomaticForwardTransfer] || settings[AppSetting.AutomaticReverseTransfer]) {
+            context.ui.showToast("This app is now in synchronisation mode. Further manual transfers cannot be done at this time.");
+            return;
+        }
+    }
+
     await checkUsernoteTypesMapped(context);
 }
 
