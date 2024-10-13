@@ -1,4 +1,4 @@
-import { thingIdFromPermalink } from "./utility.js";
+import { thingIdFromPermalink } from "./notesTransfer.js";
 
 test("Post ID extracted OK", () => {
     const url = "https://www.reddit.com/r/unitedkingdom/comments/1frajzj/i_left_the_uk_to_live_in_germany_my_commute_now/";

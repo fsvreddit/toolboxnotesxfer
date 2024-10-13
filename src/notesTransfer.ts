@@ -1,6 +1,5 @@
 import { JobContext, TriggerContext, User, UserNoteLabel, WikiPage, WikiPagePermissionLevel } from "@devvit/public-api";
 import { FINISHED_TRANSFER, NOTES_TRANSFERRED, UPDATE_WIKI_PAGE_FLAG, USERS_TRANSFERRED, WIKI_PAGE_NAME } from "./constants.js";
-import { thingIdFromPermalink } from "./utility.js";
 import { format, isSameDay } from "date-fns";
 import { decompressBlob, ToolboxClient, Usernotes } from "toolbox-devvit";
 import pluralize from "pluralize";
@@ -46,6 +45,26 @@ export function usersWithNotesSince (allUserNotes: Usernotes, since: Date): stri
     const distinctUsers = Object.keys(decompressBlob(allUserNotes.toJSON().blob));
 
     return distinctUsers.filter(user => allUserNotes.get(user).some(note => note.timestamp > since));
+}
+
+export function thingIdFromPermalink (permalink?: string): `t1_${string}` | `t3_${string}` | undefined {
+    if (!permalink) {
+        return;
+    }
+
+    const regex = /\/comments\/(\w{1,8})\/\w+\/(\w{1,8})?/;
+    const matches = regex.exec(permalink);
+    if (!matches) {
+        return;
+    }
+
+    const [, postId, commentId] = matches;
+
+    if (commentId) {
+        return `t1_${commentId}`;
+    } else if (postId) {
+        return `t3_${postId}`;
+    }
 }
 
 export async function transferNotesForUser (username: string, subreddit: string, usernotes: Usernotes, noteTypeMapping: NoteTypeMapping[], transferSince: Date | undefined, context: TriggerContext) {
