@@ -16,12 +16,15 @@ export interface RedditNativeLabel {
 
 export const defaultNoteTypeMapping: NoteTypeMapping[] = [
     { key: "gooduser", value: "HELPFUL_USER" },
+    { key: "watch", value: "SPAM_WATCH" },
     { key: "spamwatch", value: "SPAM_WATCH" },
+    { key: "warning", value: "SPAM_WARNING" },
     { key: "spamwarn", value: "SPAM_WARNING" },
     { key: "abusewarn", value: "ABUSE_WARNING" },
     { key: "ban", value: "BAN" },
     { key: "permban", value: "PERMA_BAN" },
     { key: "botban", value: "BOT_BAN" },
+    { key: "bot_ban", value: "BOT_BAN" },
 ];
 
 export const redditNativeLabels: RedditNativeLabel[] = [
