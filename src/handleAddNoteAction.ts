@@ -5,7 +5,7 @@ import { FINISHED_TRANSFER, MAPPING_KEY } from "./constants.js";
 import { AppSetting } from "./settings.js";
 import { ToolboxClient, UsernoteInit } from "toolbox-devvit";
 import { isCommentId, isLinkId } from "@devvit/shared-types/tid.js";
-import { addHours } from "date-fns";
+import { addHours, subSeconds } from "date-fns";
 
 export async function handleAddNote (event: ModAction, context: TriggerContext) {
     if (event.action !== "addnote" || !event.subreddit || !event.targetUser || event.moderator?.name === context.appName) {
@@ -22,19 +22,23 @@ export async function handleAddNote (event: ModAction, context: TriggerContext) 
         return;
     }
 
-    const subredditName = context.subredditName ?? (await context.reddit.getCurrentSubreddit()).name;
     const usersNotes = await context.reddit.getModNotes({
-        subreddit: subredditName,
+        subreddit: event.subreddit.name,
         user: event.targetUser.name,
-        limit: 1,
+        limit: 5,
     }).all();
 
-    if (usersNotes.length === 0) {
+    // Get the first note from the last ten seconds that is of the right type.
+    // We can't just get the first item, that might be a related action e.g. ban.
+    const modNote = usersNotes.find(note => note.type === "NOTE" && note.createdAt > subSeconds(event.actionedAt ?? new Date(), 10));
+
+    if (!modNote) {
+        console.log(`Add Note: Didn't find a note`);
         return;
     }
 
-    const [modNote] = usersNotes;
-    if (modNote.type !== "NOTE" || !modNote.userNote?.note || !modNote.user.name) {
+    if (!modNote.userNote?.note || !modNote.user.name) {
+        console.log(`Add Note: Note is not valid (got type ${modNote.type})`);
         // Not a valid mod note.
         return;
     }
@@ -72,7 +76,7 @@ export async function handleAddNote (event: ModAction, context: TriggerContext) 
     };
 
     const toolbox = new ToolboxClient(context.reddit);
-    await toolbox.addUsernote(subredditName, newUserNote, `"create new note on ${modNote.user.name}" via Toolbox Notes Transfer`);
+    await toolbox.addUsernote(event.subreddit.name, newUserNote, `"create new note on ${modNote.user.name}" via Toolbox Notes Transfer`);
     await finishTransfer(false, context);
 
     await context.redis.set(redisKey, new Date().getTime.toString(), { expiration: addHours(new Date(), 6) });
