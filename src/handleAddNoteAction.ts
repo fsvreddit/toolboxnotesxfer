@@ -45,7 +45,7 @@ export async function handleAddNote (event: ModAction, context: TriggerContext) 
         return;
     }
 
-    console.log(`New mod note added on ${modNote.user.name}. Transferring back to Toolbox.`);
+    console.log(`Add Note: New mod note added on ${modNote.user.name} by ${modNote.operator.name}. Transferring back to Toolbox.`);
 
     const existingMappingValues = await context.redis.get(MAPPING_KEY);
     const existingMapping: NoteTypeMapping[] = [];

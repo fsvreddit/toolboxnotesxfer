@@ -35,18 +35,18 @@ export async function handleWikiRevise (event: ModAction, context: TriggerContex
         return;
     }
 
-    console.log("Toolbox wiki page updated with changes.");
+    console.log("Wiki Revise: Toolbox wiki page updated with changes.");
 
     const allUserNotes = await getAllNotes(context);
     const usersToProcess = usersWithNotesSince(allUserNotes, transferCompleteDate);
 
     if (usersToProcess.length === 0) {
-        console.log("No new notes.");
+        console.log("Wiki Revise: No new notes.");
         await finishTransfer(false, context);
         return;
     }
 
-    console.log(`New notes for ${usersToProcess.length} ${pluralize("user", usersToProcess.length)} exist.`);
+    console.log(`Wiki Revise: New notes for ${usersToProcess.length} ${pluralize("user", usersToProcess.length)} exist.`);
 
     const noteTypeMappingValue = await context.redis.get(MAPPING_KEY);
 

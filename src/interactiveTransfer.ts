@@ -150,7 +150,7 @@ export async function transferUserBatch (_: unknown, context: JobContext) {
     const batchSize = 50;
     const queue = await context.redis.zRange(NOTES_QUEUE, 0, batchSize - 1);
     if (queue.length === 0) {
-        console.log("Queue is empty!");
+        console.log("Interactive Transfer: Queue is empty!");
         await finishTransfer(true, context);
         await sendModmail(context);
         return;
@@ -176,7 +176,7 @@ export async function transferUserBatch (_: unknown, context: JobContext) {
         await context.redis.zRem(NOTES_QUEUE, [user]);
     }
 
-    console.log(`Processed ${queue.length} ${pluralize("user", queue.length)}. Queueing further checks`);
+    console.log(`Interactive Transfer: Processed ${queue.length} ${pluralize("user", queue.length)}. Queueing further checks`);
 
     await context.scheduler.runJob({
         name: "TransferUsers",
@@ -214,5 +214,5 @@ async function sendModmail (context: TriggerContext) {
         text: message,
     });
 
-    console.log("Modmail sent.");
+    console.log("Interactive Transfer: Modmail sent.");
 }

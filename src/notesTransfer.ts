@@ -68,7 +68,7 @@ export async function transferNotesForUser (username: string, subreddit: string,
     }
 
     if (!user) {
-        console.log(`User ${username} is deleted, suspended or shadowbanned. Skipping.`);
+        console.log(`Notes Transfer: User ${username} is deleted, suspended or shadowbanned. Skipping.`);
         return;
     }
 
@@ -96,7 +96,7 @@ export async function transferNotesForUser (username: string, subreddit: string,
     await context.redis.incrBy(USERS_TRANSFERRED, 1);
     await context.redis.incrBy(NOTES_TRANSFERRED, added);
 
-    console.log(`Added ${added} mod ${pluralize("note", added)} for ${username}`);
+    console.log(`Notes Transfer: Added ${added} mod ${pluralize("note", added)} for ${username}`);
 }
 
 export async function updateWikiPage (_: unknown, context: JobContext) {
