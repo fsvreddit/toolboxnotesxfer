@@ -1,7 +1,7 @@
 import { ModAction } from "@devvit/protos";
 import { TriggerContext } from "@devvit/public-api";
 import { defaultNoteTypeMapping, finishTransfer, NoteTypeMapping, recordSyncStarted } from "./notesTransfer.js";
-import { FINISHED_TRANSFER, MAPPING_KEY } from "./constants.js";
+import { LAST_SYNC_COMPLETED, MAPPING_KEY } from "./constants.js";
 import { AppSetting } from "./settings.js";
 import { ToolboxClient, UsernoteInit } from "toolbox-devvit";
 import { isCommentId, isLinkId } from "@devvit/shared-types/tid.js";
@@ -14,11 +14,6 @@ export async function handleAddNote (event: ModAction, context: TriggerContext) 
 
     const settings = await context.settings.getAll();
     if (!settings[AppSetting.AutomaticReverseTransfer]) {
-        return;
-    }
-
-    const transferCompleteVal = await context.redis.get(FINISHED_TRANSFER);
-    if (!transferCompleteVal) {
         return;
     }
 
@@ -79,6 +74,7 @@ export async function handleAddNote (event: ModAction, context: TriggerContext) 
     await toolbox.addUsernote(event.subreddit.name, newUserNote, `"create new note on ${modNote.user.name}" via Toolbox Notes Transfer`);
     await finishTransfer(false, context);
     await recordSyncStarted(context);
+    await context.redis.set(LAST_SYNC_COMPLETED, new Date().getTime().toString());
 
     await context.redis.set(redisKey, new Date().getTime.toString(), { expiration: addHours(new Date(), 6) });
 

@@ -1,5 +1,5 @@
 import { JobContext, TriggerContext, User, UserNoteLabel, WikiPage, WikiPagePermissionLevel } from "@devvit/public-api";
-import { FINISHED_TRANSFER, NOTES_TRANSFERRED, SYNC_STARTED, UPDATE_WIKI_PAGE_FLAG, USERS_TRANSFERRED, WIKI_PAGE_NAME } from "./constants.js";
+import { BULK_FINISHED, FINISHED_TRANSFER, NOTES_TRANSFERRED, SYNC_STARTED, UPDATE_WIKI_PAGE_FLAG, USERS_TRANSFERRED, WIKI_PAGE_NAME } from "./constants.js";
 import { format, isSameDay } from "date-fns";
 import { decompressBlob, ToolboxClient, Usernotes } from "toolbox-devvit";
 import pluralize from "pluralize";
@@ -44,10 +44,10 @@ export async function getAllNotes (context: TriggerContext): Promise<Usernotes> 
     return await toolbox.getUsernotes(subredditName);
 }
 
-export function usersWithNotesSince (allUserNotes: Usernotes, since: Date): string[] {
+export function usersWithNotesInScope (allUserNotes: Usernotes, since?: Date, until?: Date): string[] {
     const distinctUsers = Object.keys(decompressBlob(allUserNotes.toJSON().blob));
 
-    return distinctUsers.filter(user => allUserNotes.get(user).some(note => note.timestamp > since));
+    return distinctUsers.filter(user => allUserNotes.get(user).some(note => (!since || note.timestamp > since) && (!until || note.timestamp < until)));
 }
 
 export function redditIdFromPermalink (permalink?: string): `t1_${string}` | `t3_${string}` | undefined {
@@ -70,11 +70,15 @@ export function redditIdFromPermalink (permalink?: string): `t1_${string}` | `t3
     }
 }
 
-export async function transferNotesForUser (username: string, subreddit: string, usernotes: Usernotes, noteTypeMapping: NoteTypeMapping[], transferSince: Date | undefined, context: TriggerContext) {
+export async function transferNotesForUser (username: string, subreddit: string, usernotes: Usernotes, noteTypeMapping: NoteTypeMapping[], timeFrom: Date | undefined, timeTo: Date | undefined, context: TriggerContext) {
     let usersNotes = usernotes.get(username);
 
-    if (transferSince) {
-        usersNotes = usersNotes.filter(note => note.timestamp > transferSince);
+    if (timeFrom) {
+        usersNotes = usersNotes.filter(note => note.timestamp > timeFrom);
+    }
+
+    if (timeTo) {
+        usersNotes = usersNotes.filter(note => note.timestamp < timeTo);
     }
 
     if (usersNotes.length === 0) {
@@ -170,9 +174,17 @@ export async function finishTransfer (updateWikiPageNow: boolean, context: JobCo
     await context.redis.del(UPDATE_WIKI_PAGE_FLAG);
 }
 
-export async function recordSyncStarted (context: TriggerContext) {
-    const alreadyRecorded = await context.redis.get(SYNC_STARTED);
+async function recordDateValueIfNotExists (key: string, context: TriggerContext) {
+    const alreadyRecorded = await context.redis.get(key);
     if (!alreadyRecorded) {
-        await context.redis.set(SYNC_STARTED, new Date().getTime().toString());
+        await context.redis.set(key, new Date().getTime().toString());
     }
+}
+
+export async function recordSyncStarted (context: TriggerContext) {
+    await recordDateValueIfNotExists(SYNC_STARTED, context);
+}
+
+export async function recordBulkFinished (context: TriggerContext) {
+    await recordDateValueIfNotExists(BULK_FINISHED, context);
 }

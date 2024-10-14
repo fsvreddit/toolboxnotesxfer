@@ -1,11 +1,10 @@
 import { Context, FormField, FormOnSubmitEvent, JobContext, JSONObject, MenuItemOnPressEvent, TriggerContext } from "@devvit/public-api";
-import { FINISHED_TRANSFER, MAPPING_KEY, NOTES_QUEUE, NOTES_TRANSFERRED, USERS_TRANSFERRED } from "./constants.js";
-import { defaultNoteTypeMapping, finishTransfer, getAllNotes, NoteTypeMapping, redditNativeLabels, transferNotesForUser, usersWithNotesSince } from "./notesTransfer.js";
+import { FINISHED_TRANSFER, MAPPING_KEY, NOTES_QUEUE, NOTES_TRANSFERRED, SYNC_STARTED, USERS_TRANSFERRED } from "./constants.js";
+import { defaultNoteTypeMapping, finishTransfer, getAllNotes, NoteTypeMapping, recordBulkFinished, redditNativeLabels, transferNotesForUser, usersWithNotesInScope } from "./notesTransfer.js";
 import { confirmForm, mapUsernoteTypesForm } from "./main.js";
 import { AppSetting } from "./settings.js";
-import { addSeconds, formatDate } from "date-fns";
+import { addSeconds } from "date-fns";
 import pluralize from "pluralize";
-import { decompressBlob } from "toolbox-devvit";
 import { RawSubredditConfig, RawUsernoteType } from "toolbox-devvit/dist/types/RawSubredditConfig.js";
 import _ from "lodash";
 
@@ -28,7 +27,7 @@ export async function startTransferMenuHandler (_: MenuItemOnPressEvent, context
     await checkUsernoteTypesMapped(context);
 }
 
-async function getToolboxUsernoteTypes (context: TriggerContext): Promise<RawUsernoteType[]> {
+export async function getToolboxUsernoteTypes (context: TriggerContext): Promise<RawUsernoteType[]> {
     const subredditName = context.subredditName ?? (await context.reddit.getCurrentSubreddit()).name;
     const wikiPage = await context.reddit.getWikiPage(subredditName, "toolbox");
 
@@ -102,46 +101,38 @@ export async function mapUsernoteTypesFormHandler (event: FormOnSubmitEvent<JSON
 }
 
 async function showConfirmationForm (context: Context) {
+    const lastFinishedTimeVal = await context.redis.get(FINISHED_TRANSFER);
+    const timeFrom = lastFinishedTimeVal ? new Date(parseInt(lastFinishedTimeVal)) : undefined;
+
+    const firstSyncVal = await context.redis.get(SYNC_STARTED);
+    const timeTo = firstSyncVal ? new Date(parseInt(firstSyncVal)) : undefined;
+
     const allUserNotes = await getAllNotes(context);
-    let distinctUsers = Object.keys(decompressBlob(allUserNotes.toJSON().blob));
+    const distinctUsers = usersWithNotesInScope(allUserNotes, timeFrom, timeTo);
     if (distinctUsers.length === 0) {
         context.ui.showToast("No usernotes need transferring.");
         return;
     }
 
-    let confirmationMessage: string;
-
-    const lastFinishedTimeVal = await context.redis.get(FINISHED_TRANSFER);
-    if (lastFinishedTimeVal) {
-        // We've done a transfer before.
-        const timeFinished = new Date(parseInt(lastFinishedTimeVal));
-        distinctUsers = usersWithNotesSince(allUserNotes, timeFinished);
-        if (distinctUsers.length === 0) {
-            context.ui.showToast(`There are no new usernotes since the last transfer on ${formatDate(timeFinished, "yyyy-MM-dd")}`);
-            return;
-        }
-        confirmationMessage = `There ${pluralize("is", distinctUsers.length)} ${distinctUsers.length} ${pluralize("user", distinctUsers.length)} with notes made since the last transfer on ${formatDate(timeFinished, "yyyy-MM-dd")}. Do you want to proceed with transfer?`;
-    } else {
-        confirmationMessage = `There ${pluralize("is", distinctUsers.length)} ${distinctUsers.length} ${pluralize("user", distinctUsers.length)} with notes. Do you want to proceed with transfer?`;
-    }
+    const confirmationMessage = `There ${pluralize("is", distinctUsers.length)} ${distinctUsers.length} ${pluralize("user", distinctUsers.length)} with notes available to transfer. Do you want to proceed with transfer?`;
 
     context.ui.showForm(confirmForm, { description: confirmationMessage });
 }
 
 export async function startTransfer (_: FormOnSubmitEvent<JSONObject>, context: Context) {
-    const allUserNotes = await getAllNotes(context);
-    let distinctUsers = Object.keys(decompressBlob(allUserNotes.toJSON().blob));
-
     const lastFinishedTimeVal = await context.redis.get(FINISHED_TRANSFER);
-    if (lastFinishedTimeVal) {
-        // We've done a transfer before.
-        const timeFinished = new Date(parseInt(lastFinishedTimeVal));
-        distinctUsers = usersWithNotesSince(allUserNotes, timeFinished);
-        if (distinctUsers.length === 0) {
-            // Should be impossible unless notes have been deleted since the last step.
-            context.ui.showToast(`There are no new usernotes since the last transfer on ${formatDate(timeFinished, "yyyy-MM-dd")}`);
-            return;
-        }
+    const timeFrom = lastFinishedTimeVal ? new Date(parseInt(lastFinishedTimeVal)) : undefined;
+
+    const firstSyncVal = await context.redis.get(SYNC_STARTED);
+    const timeTo = firstSyncVal ? new Date(parseInt(firstSyncVal)) : undefined;
+
+    const allUserNotes = await getAllNotes(context);
+    const distinctUsers = usersWithNotesInScope(allUserNotes, timeFrom, timeTo);
+
+    if (distinctUsers.length === 0) {
+        // Should be impossible unless notes have been deleted since the last step.
+        context.ui.showToast("There are no new usernotes available to transfer");
+        return;
     }
 
     context.ui.showToast("Notes will now be transferred in the background. A modmail will be sent on completion.");
@@ -172,14 +163,14 @@ export async function transferUserBatch (_: unknown, context: JobContext) {
     }
 
     const lastFinishedTimeVal = await context.redis.get(FINISHED_TRANSFER);
-    let transferSince: Date | undefined;
-    if (lastFinishedTimeVal) {
-        transferSince = new Date(parseInt(lastFinishedTimeVal));
-    }
+    const timeFrom = lastFinishedTimeVal ? new Date(parseInt(lastFinishedTimeVal)) : undefined;
+
+    const firstSyncVal = await context.redis.get(SYNC_STARTED);
+    const timeTo = firstSyncVal ? new Date(parseInt(firstSyncVal)) : undefined;
 
     const subredditName = context.subredditName ?? (await context.reddit.getCurrentSubreddit()).name;
     for (const user of queue.map(queueItem => queueItem.member)) {
-        await transferNotesForUser(user, subredditName, allUserNotes, noteTypeMapping, transferSince, context);
+        await transferNotesForUser(user, subredditName, allUserNotes, noteTypeMapping, timeFrom, timeTo, context);
         await context.redis.zRem(NOTES_QUEUE, [user]);
     }
 
@@ -232,4 +223,6 @@ async function sendModmail (context: TriggerContext) {
 
     await context.redis.del(USERS_TRANSFERRED);
     await context.redis.del(NOTES_TRANSFERRED);
+
+    await recordBulkFinished(context);
 }

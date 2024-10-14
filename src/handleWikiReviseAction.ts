@@ -1,8 +1,8 @@
 import { TriggerContext } from "@devvit/public-api";
 import { ModAction } from "@devvit/protos";
 import { AppSetting } from "./settings.js";
-import { FINISHED_TRANSFER, MAPPING_KEY, UPDATE_WIKI_PAGE_FLAG, WIKI_PAGE_REVISION } from "./constants.js";
-import { finishTransfer, getAllNotes, NoteTypeMapping, recordSyncStarted, transferNotesForUser, usersWithNotesSince } from "./notesTransfer.js";
+import { FINISHED_TRANSFER, LAST_SYNC_COMPLETED, MAPPING_KEY, UPDATE_WIKI_PAGE_FLAG, WIKI_PAGE_REVISION } from "./constants.js";
+import { finishTransfer, getAllNotes, NoteTypeMapping, recordSyncStarted, transferNotesForUser, usersWithNotesInScope } from "./notesTransfer.js";
 import pluralize from "pluralize";
 
 export async function handleWikiRevise (event: ModAction, context: TriggerContext) {
@@ -16,7 +16,9 @@ export async function handleWikiRevise (event: ModAction, context: TriggerContex
     }
 
     const transferCompleteVal = await context.redis.get(FINISHED_TRANSFER);
-    if (!transferCompleteVal) {
+    const lastSyncCompleteVal = await context.redis.get(LAST_SYNC_COMPLETED);
+
+    if (!transferCompleteVal && !lastSyncCompleteVal) {
         return;
     }
 
@@ -25,7 +27,14 @@ export async function handleWikiRevise (event: ModAction, context: TriggerContex
         return;
     }
 
-    const transferCompleteDate = new Date(parseInt(transferCompleteVal));
+    let fromDate = transferCompleteVal ? new Date(parseInt(transferCompleteVal)) : undefined;
+
+    if (lastSyncCompleteVal) {
+        const lastSyncCompleted = new Date(parseInt(lastSyncCompleteVal));
+        if (!fromDate || lastSyncCompleted > fromDate) {
+            fromDate = lastSyncCompleted;
+        }
+    }
 
     const wikiPage = await context.reddit.getWikiPage(event.subreddit.name, "usernotes");
     const lastRevisionProcessed = await context.redis.get(WIKI_PAGE_REVISION);
@@ -38,7 +47,7 @@ export async function handleWikiRevise (event: ModAction, context: TriggerContex
     console.log("Wiki Revise: Toolbox wiki page updated with changes.");
 
     const allUserNotes = await getAllNotes(context);
-    const usersToProcess = usersWithNotesSince(allUserNotes, transferCompleteDate);
+    const usersToProcess = usersWithNotesInScope(allUserNotes, fromDate);
 
     if (usersToProcess.length === 0) {
         console.log("Wiki Revise: No new notes.");
@@ -57,7 +66,7 @@ export async function handleWikiRevise (event: ModAction, context: TriggerContex
     }
 
     for (const user of usersToProcess) {
-        await transferNotesForUser(user, event.subreddit.name, allUserNotes, noteTypeMapping, transferCompleteDate, context);
+        await transferNotesForUser(user, event.subreddit.name, allUserNotes, noteTypeMapping, fromDate, undefined, context);
     }
 
     await context.redis.set(WIKI_PAGE_REVISION, wikiPage.revisionId);
@@ -65,4 +74,5 @@ export async function handleWikiRevise (event: ModAction, context: TriggerContex
     await recordSyncStarted(context);
 
     await finishTransfer(false, context);
+    await context.redis.set(LAST_SYNC_COMPLETED, new Date().getTime().toString());
 }
