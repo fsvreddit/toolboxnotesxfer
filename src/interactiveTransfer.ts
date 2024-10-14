@@ -229,4 +229,7 @@ async function sendModmail (context: TriggerContext) {
     });
 
     console.log("Interactive Transfer: Modmail sent.");
+
+    await context.redis.del(USERS_TRANSFERRED);
+    await context.redis.del(NOTES_TRANSFERRED);
 }
