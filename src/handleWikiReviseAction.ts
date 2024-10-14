@@ -2,7 +2,7 @@ import { TriggerContext } from "@devvit/public-api";
 import { ModAction } from "@devvit/protos";
 import { AppSetting } from "./settings.js";
 import { FINISHED_TRANSFER, MAPPING_KEY, UPDATE_WIKI_PAGE_FLAG, WIKI_PAGE_REVISION } from "./constants.js";
-import { finishTransfer, getAllNotes, NoteTypeMapping, transferNotesForUser, usersWithNotesSince } from "./notesTransfer.js";
+import { finishTransfer, getAllNotes, NoteTypeMapping, recordSyncStarted, transferNotesForUser, usersWithNotesSince } from "./notesTransfer.js";
 import pluralize from "pluralize";
 
 export async function handleWikiRevise (event: ModAction, context: TriggerContext) {
@@ -62,5 +62,7 @@ export async function handleWikiRevise (event: ModAction, context: TriggerContex
 
     await context.redis.set(WIKI_PAGE_REVISION, wikiPage.revisionId);
     await context.redis.set(UPDATE_WIKI_PAGE_FLAG, "true");
+    await recordSyncStarted(context);
+
     await finishTransfer(false, context);
 }

@@ -1,5 +1,5 @@
 import { JobContext, TriggerContext, User, UserNoteLabel, WikiPage, WikiPagePermissionLevel } from "@devvit/public-api";
-import { FINISHED_TRANSFER, NOTES_TRANSFERRED, UPDATE_WIKI_PAGE_FLAG, USERS_TRANSFERRED, WIKI_PAGE_NAME } from "./constants.js";
+import { FINISHED_TRANSFER, NOTES_TRANSFERRED, SYNC_STARTED, UPDATE_WIKI_PAGE_FLAG, USERS_TRANSFERRED, WIKI_PAGE_NAME } from "./constants.js";
 import { format, isSameDay } from "date-fns";
 import { decompressBlob, ToolboxClient, Usernotes } from "toolbox-devvit";
 import pluralize from "pluralize";
@@ -168,4 +168,11 @@ export async function finishTransfer (updateWikiPageNow: boolean, context: JobCo
     }
 
     await context.redis.del(UPDATE_WIKI_PAGE_FLAG);
+}
+
+export async function recordSyncStarted (context: TriggerContext) {
+    const alreadyRecorded = await context.redis.get(SYNC_STARTED);
+    if (!alreadyRecorded) {
+        await context.redis.set(SYNC_STARTED, new Date().getTime().toString());
+    }
 }
