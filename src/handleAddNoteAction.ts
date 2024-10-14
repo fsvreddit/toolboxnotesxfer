@@ -49,7 +49,7 @@ export async function handleAddNote (event: ModAction, context: TriggerContext) 
         return;
     }
 
-    console.log(`Add Note: New mod note added on ${modNote.user.name} by ${modNote.operator.name}. Transferring back to Toolbox.`);
+    console.log(`Add Note: New mod note for ${modNote.user.name} by ${modNote.operator.name}.`);
 
     const existingMappingValues = await context.redis.get(MAPPING_KEY);
     const existingMapping: NoteTypeMapping[] = [];
@@ -80,6 +80,8 @@ export async function handleAddNote (event: ModAction, context: TriggerContext) 
     await finishTransfer(false, context);
 
     await context.redis.set(redisKey, new Date().getTime.toString(), { expiration: addHours(new Date(), 6) });
+
+    console.log("Add Note: Note saved as a usernote");
 }
 
 async function getPermalinkFromRedditId (redditId: string | undefined, context: TriggerContext) {

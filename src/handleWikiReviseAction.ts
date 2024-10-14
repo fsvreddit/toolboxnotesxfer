@@ -47,7 +47,7 @@ export async function handleWikiRevise (event: ModAction, context: TriggerContex
         return;
     }
 
-    console.log(`Wiki Revise: New notes for ${usersToProcess.length} ${pluralize("user", usersToProcess.length)} exist.`);
+    console.log(`Wiki Revise: Found new notes for ${usersToProcess.length} ${pluralize("user", usersToProcess.length)}.`);
 
     const noteTypeMappingValue = await context.redis.get(MAPPING_KEY);
 
