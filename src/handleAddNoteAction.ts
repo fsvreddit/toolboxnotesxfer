@@ -1,6 +1,6 @@
 import { ModAction } from "@devvit/protos";
 import { TriggerContext } from "@devvit/public-api";
-import { defaultNoteTypeMapping, finishTransfer, NoteTypeMapping, recordSyncStarted } from "./notesTransfer.js";
+import { finishTransfer, NoteTypeMapping, recordSyncStarted } from "./notesTransfer.js";
 import { LAST_SYNC_COMPLETED, MAPPING_KEY } from "./constants.js";
 import { AppSetting } from "./settings.js";
 import { ToolboxClient, UsernoteInit } from "toolbox-devvit";
@@ -50,9 +50,6 @@ export async function handleAddNote (event: ModAction, context: TriggerContext) 
     const existingMapping: NoteTypeMapping[] = [];
     if (existingMappingValues) {
         existingMapping.push(...(JSON.parse(existingMappingValues) as NoteTypeMapping[]));
-    } else {
-        existingMapping.push(...defaultNoteTypeMapping);
-        await context.redis.set(MAPPING_KEY, JSON.stringify(existingMapping));
     }
 
     let noteType = existingMapping.find(mapping => mapping.value === modNote.userNote?.label)?.key;

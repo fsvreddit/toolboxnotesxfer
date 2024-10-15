@@ -1,6 +1,6 @@
 import { Context, FormField, FormOnSubmitEvent, JobContext, JSONObject, MenuItemOnPressEvent, TriggerContext } from "@devvit/public-api";
 import { FINISHED_TRANSFER, MAPPING_KEY, NOTES_QUEUE, NOTES_TRANSFERRED, SYNC_STARTED, USERS_TRANSFERRED } from "./constants.js";
-import { defaultNoteTypeMapping, finishTransfer, getAllNotes, NoteTypeMapping, recordBulkFinished, redditNativeLabels, transferNotesForUser, usersWithNotesInScope } from "./notesTransfer.js";
+import { finishTransfer, getAllNotes, NoteTypeMapping, recordBulkFinished, redditNativeLabels, transferNotesForUser, usersWithNotesInScope } from "./notesTransfer.js";
 import { confirmForm, mapUsernoteTypesForm } from "./main.js";
 import { AppSetting } from "./settings.js";
 import { addSeconds } from "date-fns";
@@ -56,9 +56,6 @@ async function checkUsernoteTypesMapped (context: Context) {
     const existingMapping: NoteTypeMapping[] = [];
     if (existingMappingValues) {
         existingMapping.push(...(JSON.parse(existingMappingValues) as NoteTypeMapping[]));
-    } else {
-        existingMapping.push(...defaultNoteTypeMapping);
-        await context.redis.set(MAPPING_KEY, JSON.stringify(existingMapping));
     }
 
     // Are all user note labels mapped?
@@ -74,7 +71,6 @@ async function checkUsernoteTypesMapped (context: Context) {
         options: redditNativeLabels,
         defaultValue: getMapping(type.key, existingMapping),
         multiSelect: false,
-        required: true,
     }));
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -86,13 +82,6 @@ async function checkUsernoteTypesMapped (context: Context) {
 export async function mapUsernoteTypesFormHandler (event: FormOnSubmitEvent<JSONObject>, context: Context) {
     const values = event.values as Record<string, [string]>;
     const mappings = _.toPairs(values).map(mapping => ({ key: mapping[0], value: mapping[1][0] } as NoteTypeMapping));
-    const usernoteTypes = await getToolboxUsernoteTypes(context);
-
-    // This shouldn't be necessary, but shreddit has a bug that means that required fields are actually treated as optional.
-    if (usernoteTypes.some(type => !mappings.some(mapping => mapping.key === type.key))) {
-        context.ui.showToast("Sorry, you need to map all note types before you can proceed.");
-        return;
-    }
 
     // Save mappings.
     await context.redis.set(MAPPING_KEY, JSON.stringify(mappings));

@@ -1,12 +1,11 @@
 import { TriggerContext } from "@devvit/public-api";
 import { AppInstall, AppUpgrade } from "@devvit/protos";
-import { MAPPING_KEY, NOTES_QUEUE } from "./constants.js";
-import { defaultNoteTypeMapping } from "./notesTransfer.js";
+import { NOTES_QUEUE } from "./constants.js";
 import { importWikiPageOnInstall } from "./wikiPage.js";
+import { storeInitialMappings } from "./noteMappings.js";
 
 export async function handleInstall (_: AppInstall, context: TriggerContext) {
-    await context.redis.set(MAPPING_KEY, JSON.stringify(defaultNoteTypeMapping));
-
+    await storeInitialMappings(context);
     await importWikiPageOnInstall(context);
 }
 
