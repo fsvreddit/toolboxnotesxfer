@@ -1,5 +1,5 @@
 import { Context, FormField, FormOnSubmitEvent, JobContext, JSONObject, MenuItemOnPressEvent, TriggerContext } from "@devvit/public-api";
-import { FINISHED_TRANSFER, MAPPING_KEY, NOTES_QUEUE, NOTES_TRANSFERRED, SYNC_STARTED, USERS_TRANSFERRED } from "./constants.js";
+import { FINISHED_TRANSFER, MAPPING_KEY, NOTES_ERRORED, NOTES_QUEUE, NOTES_TRANSFERRED, SYNC_STARTED, USERS_TRANSFERRED } from "./constants.js";
 import { finishTransfer, getAllNotes, NoteTypeMapping, recordBulkFinished, redditNativeLabels, transferNotesForUser, usersWithNotesInScope } from "./notesTransfer.js";
 import { confirmForm, mapUsernoteTypesForm } from "./main.js";
 import { AppSetting } from "./settings.js";
@@ -190,6 +190,13 @@ async function sendModmail (context: TriggerContext) {
         const notesTransferred = parseInt(notesTransferredVal);
         const usersTransferred = parseInt(usersTransferredVal);
         message += `${notesTransferred} ${pluralize("note", notesTransferred)} ${pluralize("was", notesTransferred)} transferred for ${usersTransferred} ${pluralize("user", usersTransferred)}\n\n`;
+
+        const notesErroredVal = await context.redis.get(NOTES_ERRORED);
+        let notesErrored: number | undefined;
+        if (notesErroredVal) {
+            notesErrored = parseInt(notesErroredVal);
+            message += `${notesErrored} ${pluralize("note", notesErrored)} notes failed to transfer.\n\n`;
+        }
     } else {
         message += "No notes were found to transfer.\n\n";
     }
@@ -212,6 +219,7 @@ async function sendModmail (context: TriggerContext) {
 
     await context.redis.del(USERS_TRANSFERRED);
     await context.redis.del(NOTES_TRANSFERRED);
+    await context.redis.del(NOTES_ERRORED);
 
     await recordBulkFinished(context);
 }

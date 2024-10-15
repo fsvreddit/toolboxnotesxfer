@@ -1,5 +1,5 @@
-import { JobContext, TriggerContext, User, UserNoteLabel } from "@devvit/public-api";
-import { BULK_FINISHED, FINISHED_TRANSFER, NOTES_TRANSFERRED, SYNC_STARTED, UPDATE_WIKI_PAGE_FLAG, USERS_TRANSFERRED } from "./constants.js";
+import { CreateModNoteOptions, JobContext, TriggerContext, User, UserNoteLabel } from "@devvit/public-api";
+import { BULK_FINISHED, FINISHED_TRANSFER, NOTES_ERRORED, NOTES_TRANSFERRED, SYNC_STARTED, UPDATE_WIKI_PAGE_FLAG, USERS_TRANSFERRED } from "./constants.js";
 import { saveWikiPage } from "./wikiPage.js";
 import { format, isSameDay } from "date-fns";
 import { decompressBlob, ToolboxClient, Usernotes } from "toolbox-devvit";
@@ -87,6 +87,7 @@ export async function transferNotesForUser (username: string, subreddit: string,
     }
 
     let added = 0;
+    let errored = 0;
 
     for (const usernote of usersNotes) {
         const label = noteTypeMapping.find(x => x.key === usernote.noteType);
@@ -97,20 +98,35 @@ export async function transferNotesForUser (username: string, subreddit: string,
             noteText += ` on ${format(usernote.timestamp, "yyyy-MM-dd")}`;
         }
 
-        await context.reddit.addModNote({
+        const noteContent: CreateModNoteOptions = {
             label: label?.value,
             note: noteText,
             redditId,
             subreddit,
             user: username,
-        });
-        added++;
+        };
+
+        try {
+            await context.reddit.addModNote(noteContent);
+            added++;
+        } catch {
+            // I don't expect any of these to fail, but increment count anyway.
+            errored++;
+        }
     }
 
     await context.redis.incrBy(USERS_TRANSFERRED, 1);
     await context.redis.incrBy(NOTES_TRANSFERRED, added);
+    if (errored) {
+        await context.redis.incrBy(NOTES_ERRORED, errored);
+    }
 
-    console.log(`Notes Transfer: Added ${added} mod ${pluralize("note", added)} for ${username}`);
+    let output = `Notes Transfer: Added ${added} mod ${pluralize("note", added)} for ${username}`;
+    if (errored) {
+        output += `. Errored: ${errored}`;
+    }
+
+    console.log(output);
 }
 
 export async function updateWikiPage (_: unknown, context: JobContext) {
