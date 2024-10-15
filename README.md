@@ -34,7 +34,7 @@ Only new additions are processed. Deletions are not currently handled.
 
 This app can only record mod notes as if they were added at the time of transfer, and by /u/toolboxnotesxfer. This means that the dates/times of notes will always be wrong unless the note was transferred via the sync process.
 
-As a result, all usernotes transferred using this method will have text appended e.g. "original note text, added by actualmod on 2024-03-15". If the usernote was added on the same day that the transfer occurs, the date will be omitted.
+As a result, all Toolbox usernotes transferred using this method will have text appended e.g. "original note text, added by actualmod on 2024-03-15". If the usernote was added on the same day that the transfer occurs, the date will be omitted.
 
 ![Example of mod note with text appended](https://raw.githubusercontent.com/fsvreddit/toolboxnotesxfer/main/doc_images/ModNote.png)
 
