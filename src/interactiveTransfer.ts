@@ -1,5 +1,5 @@
 import { Context, FormField, FormOnSubmitEvent, JobContext, JSONObject, MenuItemOnPressEvent, TriggerContext } from "@devvit/public-api";
-import { FINISHED_TRANSFER, MAPPING_KEY, NOTES_ERRORED, NOTES_QUEUE, NOTES_TRANSFERRED, SYNC_STARTED, USERS_TRANSFERRED } from "./constants.js";
+import { BULK_FINISHED, FINISHED_TRANSFER, MAPPING_KEY, NOTES_ERRORED, NOTES_QUEUE, NOTES_TRANSFERRED, SYNC_STARTED, USERS_TRANSFERRED } from "./constants.js";
 import { finishTransfer, getAllNotes, NoteTypeMapping, recordBulkFinished, redditNativeLabels, transferNotesForUser, usersWithNotesInScope } from "./notesTransfer.js";
 import { confirmForm, mapUsernoteTypesForm } from "./main.js";
 import { AppSetting } from "./settings.js";
@@ -15,8 +15,12 @@ export async function startTransferMenuHandler (_: MenuItemOnPressEvent, context
         return;
     }
 
-    const transferCompleteVal = await context.redis.get(FINISHED_TRANSFER);
-    if (transferCompleteVal) {
+    const [transferCompleteVal, bulkFinishedVal] = await Promise.all([
+        context.redis.get(FINISHED_TRANSFER),
+        context.redis.get(BULK_FINISHED),
+    ]);
+
+    if (transferCompleteVal && bulkFinishedVal) {
         const settings = await context.settings.getAll();
         if (settings[AppSetting.AutomaticForwardTransfer] || settings[AppSetting.AutomaticReverseTransfer]) {
             context.ui.showToast("This app is now in synchronisation mode. Further manual transfers cannot be done at this time.");
@@ -90,8 +94,12 @@ export async function mapUsernoteTypesFormHandler (event: FormOnSubmitEvent<JSON
 }
 
 async function showConfirmationForm (context: Context) {
-    const lastFinishedTimeVal = await context.redis.get(FINISHED_TRANSFER);
-    const timeFrom = lastFinishedTimeVal ? new Date(parseInt(lastFinishedTimeVal)) : undefined;
+    const [lastFinishedTimeVal, bulkFinishedVal] = await Promise.all([
+        context.redis.get(FINISHED_TRANSFER),
+        context.redis.get(BULK_FINISHED),
+    ]);
+
+    const timeFrom = lastFinishedTimeVal && bulkFinishedVal ? new Date(parseInt(lastFinishedTimeVal)) : undefined;
 
     const firstSyncVal = await context.redis.get(SYNC_STARTED);
     const timeTo = firstSyncVal ? new Date(parseInt(firstSyncVal)) : undefined;
@@ -109,8 +117,12 @@ async function showConfirmationForm (context: Context) {
 }
 
 export async function startTransfer (_: FormOnSubmitEvent<JSONObject>, context: Context) {
-    const lastFinishedTimeVal = await context.redis.get(FINISHED_TRANSFER);
-    const timeFrom = lastFinishedTimeVal ? new Date(parseInt(lastFinishedTimeVal)) : undefined;
+    const [lastFinishedTimeVal, bulkFinishedVal] = await Promise.all([
+        context.redis.get(FINISHED_TRANSFER),
+        context.redis.get(BULK_FINISHED),
+    ]);
+
+    const timeFrom = lastFinishedTimeVal && bulkFinishedVal ? new Date(parseInt(lastFinishedTimeVal)) : undefined;
 
     const firstSyncVal = await context.redis.get(SYNC_STARTED);
     const timeTo = firstSyncVal ? new Date(parseInt(firstSyncVal)) : undefined;
