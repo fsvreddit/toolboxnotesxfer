@@ -20,15 +20,19 @@ export async function handleAddNote (event: ModAction, context: TriggerContext) 
     const usersNotes = await context.reddit.getModNotes({
         subreddit: event.subreddit.name,
         user: event.targetUser.name,
-        limit: 5,
+        filter: "NOTE",
+        limit: 1,
     }).all();
 
-    // Get the first note from the last ten seconds that is of the right type.
-    // We can't just get the first item, that might be a related action e.g. ban.
-    const modNote = usersNotes.find(note => note.type === "NOTE" && note.createdAt > subSeconds(event.actionedAt ?? new Date(), 10));
-
-    if (!modNote) {
+    if (usersNotes.length === 0) {
         console.log(`Add Note: Didn't find a note`);
+        return;
+    }
+
+    const [modNote] = usersNotes;
+
+    if (modNote.createdAt < subSeconds(event.actionedAt ?? new Date(), 30)) {
+        console.log(`Note is too old.`);
         return;
     }
 
