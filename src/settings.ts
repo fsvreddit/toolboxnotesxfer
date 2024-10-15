@@ -10,7 +10,7 @@ export const appSettings: SettingsFormField[] = [
     {
         type: "group",
         label: "Synchronisation Options",
-        helpText: "If you intend to turn on synchronisation AND do a bulk transfer, it is best to start the bulk transfer as early as possible",
+        helpText: "If you intend to turn on synchronisation AND do a bulk transfer, I recommend starting the bulk transfer before turning sync options on.",
         fields: [
             {
                 name: AppSetting.AutomaticForwardTransfer,
