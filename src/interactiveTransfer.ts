@@ -1,5 +1,5 @@
 import { Context, FormField, FormOnSubmitEvent, JobContext, JSONObject, MenuItemOnPressEvent, TriggerContext } from "@devvit/public-api";
-import { BULK_FINISHED, FINISHED_TRANSFER, MAPPING_KEY, NOTES_ERRORED, NOTES_QUEUE, NOTES_TRANSFERRED, SYNC_STARTED, USERS_TRANSFERRED } from "./constants.js";
+import { BULK_FINISHED, DEFAULT_USERNOTE_TYPES, FINISHED_TRANSFER, MAPPING_KEY, NOTES_ERRORED, NOTES_QUEUE, NOTES_TRANSFERRED, SYNC_STARTED, USERS_TRANSFERRED } from "./constants.js";
 import { finishTransfer, getAllNotes, NoteTypeMapping, recordBulkFinished, redditNativeLabels, transferNotesForUser, usersWithNotesInScope } from "./notesTransfer.js";
 import { confirmForm, mapUsernoteTypesForm } from "./main.js";
 import { AppSetting } from "./settings.js";
@@ -32,12 +32,17 @@ export async function startTransferMenuHandler (_: MenuItemOnPressEvent, context
 }
 
 export async function getToolboxUsernoteTypes (context: TriggerContext): Promise<RawUsernoteType[]> {
-    const subredditName = context.subredditName ?? (await context.reddit.getCurrentSubreddit()).name;
-    const wikiPage = await context.reddit.getWikiPage(subredditName, "toolbox");
+    try {
+        const subredditName = context.subredditName ?? (await context.reddit.getCurrentSubreddit()).name;
+        const wikiPage = await context.reddit.getWikiPage(subredditName, "toolbox");
 
-    const toolboxConfig = JSON.parse(wikiPage.content) as RawSubredditConfig;
+        const toolboxConfig = JSON.parse(wikiPage.content) as RawSubredditConfig;
 
-    return toolboxConfig.usernoteColors;
+        return toolboxConfig.usernoteColors;
+    } catch {
+        console.log("Could not retrieve Toolbox note types, config page may not exist. Returning default set.");
+        return DEFAULT_USERNOTE_TYPES;
+    }
 }
 
 function getMapping (type: string, mappings: NoteTypeMapping[]): string[] | undefined {
