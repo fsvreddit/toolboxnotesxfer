@@ -1,5 +1,5 @@
 import { Context, FormField, FormOnSubmitEvent, JobContext, JSONObject, MenuItemOnPressEvent, TriggerContext } from "@devvit/public-api";
-import { BULK_FINISHED, DEFAULT_USERNOTE_TYPES, FINISHED_TRANSFER, MAPPING_KEY, NOTES_ERRORED, NOTES_QUEUE, NOTES_TRANSFERRED, SYNC_STARTED, USERS_TRANSFERRED } from "./constants.js";
+import { BULK_FINISHED, DEFAULT_USERNOTE_TYPES, FINISHED_TRANSFER, MAPPING_KEY, NOTES_ERRORED, NOTES_QUEUE, NOTES_TRANSFERRED, SYNC_STARTED, USERS_SKIPPED, USERS_TRANSFERRED } from "./constants.js";
 import { finishTransfer, getAllNotes, NoteTypeMapping, recordBulkFinished, redditNativeLabels, transferNotesForUser, usersWithNotesInScope } from "./notesTransfer.js";
 import { confirmForm, mapUsernoteTypesForm } from "./main.js";
 import { AppSetting } from "./settings.js";
@@ -198,8 +198,11 @@ export async function transferUserBatch (_: unknown, context: JobContext) {
 async function sendModmail (context: TriggerContext) {
     const subredditName = context.subredditName ?? (await context.reddit.getCurrentSubreddit()).name;
 
-    const notesTransferredVal = await context.redis.get(NOTES_TRANSFERRED);
-    const usersTransferredVal = await context.redis.get(USERS_TRANSFERRED);
+    const [notesTransferredVal, usersTransferredVal, usersSkippedVal] = await Promise.all([
+        context.redis.get(NOTES_TRANSFERRED),
+        context.redis.get(USERS_TRANSFERRED),
+        context.redis.get(USERS_SKIPPED),
+    ]);
 
     let message = "All Toolbox usernotes have been transferred to Mod Notes.\n\n";
 
@@ -212,13 +215,16 @@ async function sendModmail (context: TriggerContext) {
         let notesErrored: number | undefined;
         if (notesErroredVal) {
             notesErrored = parseInt(notesErroredVal);
-            message += `${notesErrored} ${pluralize("note", notesErrored)} notes failed to transfer.\n\n`;
+            message += `${notesErrored} ${pluralize("note", notesErrored)} failed to transfer.\n\n`;
         }
     } else {
         message += "No notes were found to transfer.\n\n";
     }
 
-    message += "Notes were transferred for active users only. Notes for suspended, shadowbanned or deleted users were not transferred.\n\n";
+    if (usersSkippedVal) {
+        const usersSkipped = parseInt(usersSkippedVal);
+        message += `Notes were transferred for active users only. Notes for ${usersSkipped} suspended, shadowbanned or deleted ${pluralize("user", usersSkipped)} were not transferred.\n\n`;
+    }
 
     const settings = await context.settings.getAll();
     if (!settings[AppSetting.AutomaticForwardTransfer] && !settings[AppSetting.AutomaticReverseTransfer]) {
@@ -234,9 +240,12 @@ async function sendModmail (context: TriggerContext) {
 
     console.log("Interactive Transfer: Modmail sent.");
 
-    await context.redis.del(USERS_TRANSFERRED);
-    await context.redis.del(NOTES_TRANSFERRED);
-    await context.redis.del(NOTES_ERRORED);
+    await Promise.all([
+        context.redis.del(USERS_TRANSFERRED),
+        context.redis.del(NOTES_TRANSFERRED),
+        context.redis.del(NOTES_ERRORED),
+        context.redis.del(USERS_SKIPPED),
+    ]);
 
     await recordBulkFinished(context);
 }

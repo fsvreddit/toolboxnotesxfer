@@ -10,6 +10,7 @@ export const LAST_SYNC_COMPLETED = "LastSyncCompleted";
 export const USERS_TRANSFERRED = "UsersTransferred";
 export const NOTES_TRANSFERRED = "NotesTransferred";
 export const NOTES_ERRORED = "NotesErrored";
+export const USERS_SKIPPED = "UsersSkipped";
 
 export const WIKI_PAGE_NAME = "toolboxnotesxfer";
 export const WIKI_PAGE_REVISION = "wikiPageRevision";

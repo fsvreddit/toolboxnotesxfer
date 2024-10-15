@@ -1,5 +1,5 @@
 import { CreateModNoteOptions, JobContext, TriggerContext, User, UserNoteLabel } from "@devvit/public-api";
-import { BULK_FINISHED, FINISHED_TRANSFER, NOTES_ERRORED, NOTES_TRANSFERRED, SYNC_STARTED, UPDATE_WIKI_PAGE_FLAG, USERS_TRANSFERRED } from "./constants.js";
+import { BULK_FINISHED, FINISHED_TRANSFER, NOTES_ERRORED, NOTES_TRANSFERRED, SYNC_STARTED, UPDATE_WIKI_PAGE_FLAG, USERS_SKIPPED, USERS_TRANSFERRED } from "./constants.js";
 import { saveWikiPage } from "./wikiPage.js";
 import { format, isSameDay } from "date-fns";
 import { decompressBlob, ToolboxClient, Usernotes } from "toolbox-devvit";
@@ -83,6 +83,7 @@ export async function transferNotesForUser (username: string, subreddit: string,
 
     if (!user) {
         console.log(`Notes Transfer: User ${username} is deleted, suspended or shadowbanned. Skipping.`);
+        await context.redis.incrBy(USERS_SKIPPED, 1);
         return;
     }
 

@@ -1,5 +1,5 @@
 import { ModAction } from "@devvit/protos";
-import { TriggerContext } from "@devvit/public-api";
+import { Post, Comment, TriggerContext } from "@devvit/public-api";
 import { finishTransfer, NoteTypeMapping, recordSyncStarted } from "./notesTransfer.js";
 import { LAST_SYNC_COMPLETED, MAPPING_KEY } from "./constants.js";
 import { AppSetting } from "./settings.js";
@@ -37,8 +37,7 @@ export async function handleAddNote (event: ModAction, context: TriggerContext) 
     }
 
     if (!modNote.userNote?.note || !modNote.user.name) {
-        console.log(`Add Note: Note is not valid (got type ${modNote.type})`);
-        // Not a valid mod note.
+        console.log(`Add Note: Note is not valid (username not recorded or missing usernote)`);
         return;
     }
 
@@ -82,18 +81,18 @@ export async function handleAddNote (event: ModAction, context: TriggerContext) 
     console.log("Add Note: Note saved as a usernote");
 }
 
-async function getPermalinkFromRedditId (redditId: string | undefined, context: TriggerContext) {
+async function getPermalinkFromRedditId (redditId: string | undefined, context: TriggerContext): Promise<string | undefined> {
     if (!redditId) {
         return;
     }
 
+    let target: Post | Comment | undefined;
+
     if (isCommentId(redditId)) {
-        const comment = await context.reddit.getCommentById(redditId);
-        return comment.permalink;
+        target = await context.reddit.getCommentById(redditId);
+    } else if (isLinkId(redditId)) {
+        target = await context.reddit.getPostById(redditId);
     }
 
-    if (isLinkId(redditId)) {
-        const post = await context.reddit.getPostById(redditId);
-        return post.permalink;
-    }
+    return target?.permalink;
 }
