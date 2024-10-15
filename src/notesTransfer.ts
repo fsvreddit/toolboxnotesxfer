@@ -1,5 +1,6 @@
-import { JobContext, TriggerContext, User, UserNoteLabel, WikiPage, WikiPagePermissionLevel } from "@devvit/public-api";
-import { BULK_FINISHED, FINISHED_TRANSFER, NOTES_TRANSFERRED, SYNC_STARTED, UPDATE_WIKI_PAGE_FLAG, USERS_TRANSFERRED, WIKI_PAGE_NAME } from "./constants.js";
+import { JobContext, TriggerContext, User, UserNoteLabel } from "@devvit/public-api";
+import { BULK_FINISHED, FINISHED_TRANSFER, NOTES_TRANSFERRED, SYNC_STARTED, UPDATE_WIKI_PAGE_FLAG, USERS_TRANSFERRED } from "./constants.js";
+import { saveWikiPage } from "./wikiPage.js";
 import { format, isSameDay } from "date-fns";
 import { decompressBlob, ToolboxClient, Usernotes } from "toolbox-devvit";
 import pluralize from "pluralize";
@@ -141,37 +142,7 @@ export async function finishTransfer (updateWikiPageNow: boolean, context: JobCo
         return;
     }
 
-    const subredditName = context.subredditName ?? (await context.reddit.getCurrentSubreddit()).name;
-
-    // Store completed date in the wiki, to allow for future incremental updates.
-    // It's important not to use Redis here to preserve data if app is uninstalled.
-    let wikiPage: WikiPage | undefined;
-    try {
-        wikiPage = await context.reddit.getWikiPage(subredditName, WIKI_PAGE_NAME);
-    } catch {
-        //
-    }
-
-    const wikiSaveOptions = {
-        subredditName,
-        page: WIKI_PAGE_NAME,
-        content: JSON.stringify({ completedDate }),
-        reason: "Storing completion date for transfer",
-    };
-
-    if (wikiPage) {
-        await context.reddit.updateWikiPage(wikiSaveOptions);
-    } else {
-        await context.reddit.createWikiPage(wikiSaveOptions);
-        await context.reddit.updateWikiPageSettings({
-            subredditName,
-            page: WIKI_PAGE_NAME,
-            listed: false,
-            permLevel: WikiPagePermissionLevel.MODS_ONLY,
-        });
-    }
-
-    await context.redis.del(UPDATE_WIKI_PAGE_FLAG);
+    await saveWikiPage(context);
 }
 
 async function recordDateValueIfNotExists (key: string, context: TriggerContext) {
