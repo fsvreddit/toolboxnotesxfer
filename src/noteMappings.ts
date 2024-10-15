@@ -3,6 +3,7 @@ import { getToolboxUsernoteTypes } from "./interactiveTransfer.js";
 import { NoteTypeMapping } from "./notesTransfer.js";
 import { MAPPING_KEY } from "./constants.js";
 
+// This mapping list covers mappings that are both historical and current. Toolbox changed their note labels at some point.
 const defaultNoteTypeMapping: Record<string, UserNoteLabel> = {
     gooduser: "HELPFUL_USER",
     watch: "SPAM_WATCH",
