@@ -209,13 +209,13 @@ async function sendModmail (context: TriggerContext) {
     if (notesTransferredVal && usersTransferredVal) {
         const notesTransferred = parseInt(notesTransferredVal);
         const usersTransferred = parseInt(usersTransferredVal);
-        message += `${notesTransferred} ${pluralize("note", notesTransferred)} ${pluralize("was", notesTransferred)} transferred for ${usersTransferred} ${pluralize("user", usersTransferred)}\n\n`;
+        message += `${notesTransferred.toLocaleString()} ${pluralize("note", notesTransferred)} ${pluralize("was", notesTransferred)} transferred for ${usersTransferred.toLocaleString()} ${pluralize("user", usersTransferred)}\n\n`;
 
         const notesErroredVal = await context.redis.get(NOTES_ERRORED);
         let notesErrored: number | undefined;
         if (notesErroredVal) {
             notesErrored = parseInt(notesErroredVal);
-            message += `${notesErrored} ${pluralize("note", notesErrored)} failed to transfer.\n\n`;
+            message += `${notesErrored.toLocaleString()} ${pluralize("note", notesErrored)} failed to transfer.\n\n`;
         }
     } else {
         message += "No notes were found to transfer.\n\n";
@@ -223,7 +223,7 @@ async function sendModmail (context: TriggerContext) {
 
     if (usersSkippedVal) {
         const usersSkipped = parseInt(usersSkippedVal);
-        message += `Notes were transferred for active users only. Notes for ${usersSkipped} suspended, shadowbanned or deleted ${pluralize("user", usersSkipped)} were not transferred.\n\n`;
+        message += `Notes were transferred for active users only. Notes for ${usersSkipped.toLocaleString()} suspended, shadowbanned or deleted ${pluralize("user", usersSkipped)} were not transferred.\n\n`;
     }
 
     const settings = await context.settings.getAll();
