@@ -246,10 +246,10 @@ async function sendModmail (context: TriggerContext) {
         message += ` If you would find this useful, you can enable it [here](https://developers.reddit.com/r/${subredditName}/apps/toolboxnotesxfer).\n\n`;
     }
 
-    await context.reddit.sendPrivateMessage({
-        to: `/r/${subredditName}`,
+    await context.reddit.modMail.createModInboxConversation({
         subject: "Toolbox usernotes transfer has completed!",
-        text: message,
+        bodyMarkdown: message,
+        subredditId: context.subredditId,
     });
 
     console.log("Interactive Transfer: Modmail sent.");
