@@ -121,9 +121,11 @@ export async function transferNotesForUser (username: string, subreddit: string,
         try {
             await context.reddit.addModNote(noteContent);
             added++;
-        } catch {
+        } catch (error) {
             // I don't expect any of these to fail, but increment count anyway.
             errored++;
+            console.log(`Error transferring note ${JSON.stringify(noteContent)}`);
+            console.log(error);
         }
     }
 

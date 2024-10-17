@@ -12,6 +12,15 @@ export async function startTransferMenuHandler (_: MenuItemOnPressEvent, context
     const notesQueueLength = await context.redis.zCard(NOTES_QUEUE);
     if (notesQueueLength) {
         context.ui.showToast(`Import is already in progress! ${notesQueueLength} users still to go.`);
+
+        // Check if jobs are queued. If not, requeue.
+        const jobs = await context.scheduler.listJobs();
+        if (!jobs.some(job => job.name === "TransferUsers")) {
+            await context.scheduler.runJob({
+                name: "TransferUsers",
+                runAt: new Date(),
+            });
+        }
         return;
     }
 
@@ -253,4 +262,20 @@ async function sendModmail (context: TriggerContext) {
     ]);
 
     await recordBulkFinished(context);
+}
+
+export async function checkAndReinstateSchedulerJob (_: unknown, context: TriggerContext) {
+    const notesStillToTransfer = await context.redis.zCard(NOTES_QUEUE);
+    if (!notesStillToTransfer) {
+        // No need to set up job.
+        return;
+    }
+
+    const currentJobs = await context.scheduler.listJobs();
+    if (!currentJobs.some(job => job.name === "TransferUsers")) {
+        await context.scheduler.runJob({
+            name: "TransferUsers",
+            runAt: new Date(),
+        });
+    }
 }
