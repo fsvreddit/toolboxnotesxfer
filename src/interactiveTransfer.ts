@@ -37,6 +37,11 @@ export async function getToolboxUsernoteTypes (context: TriggerContext): Promise
         const wikiPage = await context.reddit.getWikiPage(subredditName, "toolbox");
 
         const toolboxConfig = JSON.parse(wikiPage.content) as RawSubredditConfig;
+        const usernoteColors = toolboxConfig.usernoteColors as RawUsernoteType[] | string | undefined;
+
+        if (usernoteColors === "" || usernoteColors === undefined) {
+            return DEFAULT_USERNOTE_TYPES;
+        }
 
         return toolboxConfig.usernoteColors;
     } catch {

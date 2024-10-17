@@ -26,13 +26,21 @@ export const redditNativeLabels: RedditNativeLabel[] = [
     { label: "Helpful User", value: "HELPFUL_USER" },
 ];
 
-export async function getAllNotes (context: TriggerContext): Promise<Usernotes> {
-    const toolbox = new ToolboxClient(context.reddit);
+export async function getAllNotes (context: TriggerContext): Promise<Usernotes | undefined> {
     const subredditName = context.subredditName ?? (await context.reddit.getCurrentSubreddit()).name;
-    return await toolbox.getUsernotes(subredditName);
+    const toolbox = new ToolboxClient(context.reddit);
+    try {
+        return await toolbox.getUsernotes(subredditName);
+    } catch {
+        return;
+    }
 }
 
-export function usersWithNotesInScope (allUserNotes: Usernotes, since?: Date, until?: Date): string[] {
+export function usersWithNotesInScope (allUserNotes: Usernotes | undefined, since?: Date, until?: Date): string[] {
+    if (!allUserNotes) {
+        return [];
+    }
+
     const distinctUsers = Object.keys(decompressBlob(allUserNotes.toJSON().blob));
 
     return distinctUsers.filter(user => allUserNotes.get(user).some(note => (!since || note.timestamp > since) && (!until || note.timestamp < until)));
@@ -58,7 +66,10 @@ export function redditIdFromPermalink (permalink?: string): `t1_${string}` | `t3
     }
 }
 
-export async function transferNotesForUser (username: string, subreddit: string, usernotes: Usernotes, noteTypeMapping: NoteTypeMapping[], timeFrom: Date | undefined, timeTo: Date | undefined, context: TriggerContext) {
+export async function transferNotesForUser (username: string, subreddit: string, usernotes: Usernotes | undefined, noteTypeMapping: NoteTypeMapping[], timeFrom: Date | undefined, timeTo: Date | undefined, context: TriggerContext) {
+    if (!usernotes) {
+        return;
+    }
     let usersNotes = usernotes.get(username);
 
     if (timeFrom) {

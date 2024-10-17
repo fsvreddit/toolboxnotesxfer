@@ -42,6 +42,12 @@ If a note is linked to content other than a post or comment (e.g. a note created
 
 Usernotes can only be transferred for active users. Suspended, shadowbanned and deleted users will be skipped.
 
-## Source Code and acknowledgements
+## Source Code
 
 This app is open source, you can find it on GitHub [here](https://github.com/fsvreddit/toolboxnotesxfer).
+
+## Change History
+
+### v1.0.1
+
+* Fixed a bug that caused a generic error message when Toolbox isn't fully configured, or there are no usernotes
