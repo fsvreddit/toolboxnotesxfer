@@ -51,3 +51,9 @@ This app is open source, you can find it on GitHub [here](https://github.com/fsv
 ### v1.0.1
 
 * Fixed a bug that caused a generic error message when Toolbox isn't fully configured, or there are no usernotes
+
+### v1.0.2
+
+* Transfer older notes first, so that they appear in the right order
+* More reliable job resume logic in case scheduler jobs get "lost"
+* Send post-transfer to inbox, not Mod Discussions
