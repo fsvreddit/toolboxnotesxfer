@@ -5,8 +5,10 @@ import { confirmForm, mapUsernoteTypesForm } from "./main.js";
 import { AppSetting } from "./settings.js";
 import { addSeconds } from "date-fns";
 import pluralize from "pluralize";
-import { RawSubredditConfig, RawUsernoteType } from "toolbox-devvit/dist/types/RawSubredditConfig.js";
+import { RawUsernoteType } from "toolbox-devvit/dist/types/RawSubredditConfig.js";
 import _ from "lodash";
+import { ToolboxClient } from "toolbox-devvit";
+import { SubredditConfig } from "toolbox-devvit/dist/classes/SubredditConfig.js";
 
 export async function startTransferMenuHandler (_: MenuItemOnPressEvent, context: Context) {
     const notesQueueLength = await context.redis.zCard(NOTES_QUEUE);
@@ -41,22 +43,17 @@ export async function startTransferMenuHandler (_: MenuItemOnPressEvent, context
 }
 
 export async function getToolboxUsernoteTypes (context: TriggerContext): Promise<RawUsernoteType[]> {
+    const subredditName = context.subredditName ?? (await context.reddit.getCurrentSubreddit()).name;
+    const toolbox = new ToolboxClient(context.reddit);
+    let subConfig: SubredditConfig;
     try {
-        const subredditName = context.subredditName ?? (await context.reddit.getCurrentSubreddit()).name;
-        const wikiPage = await context.reddit.getWikiPage(subredditName, "toolbox");
-
-        const toolboxConfig = JSON.parse(wikiPage.content) as RawSubredditConfig;
-        const usernoteColors = toolboxConfig.usernoteColors as RawUsernoteType[] | string | undefined;
-
-        if (usernoteColors === "" || usernoteColors === undefined) {
-            return DEFAULT_USERNOTE_TYPES;
-        }
-
-        return toolboxConfig.usernoteColors;
+        subConfig = await toolbox.getConfig(subredditName);
     } catch {
         console.log("Could not retrieve Toolbox note types, config page may not exist. Returning default set.");
         return DEFAULT_USERNOTE_TYPES;
     }
+
+    return subConfig.getAllNoteTypes();
 }
 
 function getMapping (type: string, mappings: NoteTypeMapping[]): string[] | undefined {
