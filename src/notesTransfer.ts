@@ -101,7 +101,7 @@ export async function transferNotesForUser (username: string, subreddit: string,
     let added = 0;
     let errored = 0;
 
-    for (const usernote of usersNotes) {
+    for (const usernote of usersNotes.sort((a, b) => a.timestamp > b.timestamp ? 1 : -1)) {
         const label = noteTypeMapping.find(x => x.key === usernote.noteType);
         const redditId = redditIdFromPermalink(usernote.contextPermalink);
 
