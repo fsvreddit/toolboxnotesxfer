@@ -5,13 +5,24 @@ import { confirmForm, mapUsernoteTypesForm } from "./main.js";
 import { AppSetting } from "./settings.js";
 import { addSeconds } from "date-fns";
 import pluralize from "pluralize";
-import { RawSubredditConfig, RawUsernoteType } from "toolbox-devvit/dist/types/RawSubredditConfig.js";
+import { RawUsernoteType } from "toolbox-devvit/dist/types/RawSubredditConfig.js";
 import _ from "lodash";
+import { ToolboxClient } from "toolbox-devvit";
+import { SubredditConfig } from "toolbox-devvit/dist/classes/SubredditConfig.js";
 
 export async function startTransferMenuHandler (_: MenuItemOnPressEvent, context: Context) {
     const notesQueueLength = await context.redis.zCard(NOTES_QUEUE);
     if (notesQueueLength) {
         context.ui.showToast(`Import is already in progress! ${notesQueueLength} users still to go.`);
+
+        // Check if jobs are queued. If not, requeue.
+        const jobs = await context.scheduler.listJobs();
+        if (!jobs.some(job => job.name === "TransferUsers")) {
+            await context.scheduler.runJob({
+                name: "TransferUsers",
+                runAt: new Date(),
+            });
+        }
         return;
     }
 
@@ -32,22 +43,17 @@ export async function startTransferMenuHandler (_: MenuItemOnPressEvent, context
 }
 
 export async function getToolboxUsernoteTypes (context: TriggerContext): Promise<RawUsernoteType[]> {
+    const subredditName = context.subredditName ?? (await context.reddit.getCurrentSubreddit()).name;
+    const toolbox = new ToolboxClient(context.reddit);
+    let subConfig: SubredditConfig;
     try {
-        const subredditName = context.subredditName ?? (await context.reddit.getCurrentSubreddit()).name;
-        const wikiPage = await context.reddit.getWikiPage(subredditName, "toolbox");
-
-        const toolboxConfig = JSON.parse(wikiPage.content) as RawSubredditConfig;
-        const usernoteColors = toolboxConfig.usernoteColors as RawUsernoteType[] | string | undefined;
-
-        if (usernoteColors === "" || usernoteColors === undefined) {
-            return DEFAULT_USERNOTE_TYPES;
-        }
-
-        return toolboxConfig.usernoteColors;
+        subConfig = await toolbox.getConfig(subredditName);
     } catch {
         console.log("Could not retrieve Toolbox note types, config page may not exist. Returning default set.");
         return DEFAULT_USERNOTE_TYPES;
     }
+
+    return subConfig.getAllNoteTypes();
 }
 
 function getMapping (type: string, mappings: NoteTypeMapping[]): string[] | undefined {
@@ -237,10 +243,10 @@ async function sendModmail (context: TriggerContext) {
         message += ` If you would find this useful, you can enable it [here](https://developers.reddit.com/r/${subredditName}/apps/toolboxnotesxfer).\n\n`;
     }
 
-    await context.reddit.sendPrivateMessage({
-        to: `/r/${subredditName}`,
+    await context.reddit.modMail.createModInboxConversation({
         subject: "Toolbox usernotes transfer has completed!",
-        text: message,
+        bodyMarkdown: message,
+        subredditId: context.subredditId,
     });
 
     console.log("Interactive Transfer: Modmail sent.");
@@ -253,4 +259,20 @@ async function sendModmail (context: TriggerContext) {
     ]);
 
     await recordBulkFinished(context);
+}
+
+export async function checkAndReinstateSchedulerJob (_: unknown, context: TriggerContext) {
+    const notesStillToTransfer = await context.redis.zCard(NOTES_QUEUE);
+    if (!notesStillToTransfer) {
+        // No need to set up job.
+        return;
+    }
+
+    const currentJobs = await context.scheduler.listJobs();
+    if (!currentJobs.some(job => job.name === "TransferUsers")) {
+        await context.scheduler.runJob({
+            name: "TransferUsers",
+            runAt: new Date(),
+        });
+    }
 }
