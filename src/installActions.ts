@@ -18,6 +18,11 @@ export async function handleInstallOrUpgrade (_: AppInstall | AppUpgrade, contex
         cron: "0 0 * * *",
     });
 
+    await context.scheduler.runJob({
+        name: "CheckAndReinstateSchedulerJob",
+        cron: "5 0/6 * * *",
+    });
+
     const queuedNotes = await context.redis.zCard(NOTES_QUEUE);
     if (queuedNotes) {
         await context.scheduler.runJob({

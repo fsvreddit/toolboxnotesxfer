@@ -1,5 +1,5 @@
 import { Devvit, FormField } from "@devvit/public-api";
-import { mapUsernoteTypesFormHandler, startTransfer, startTransferMenuHandler, transferUserBatch } from "./interactiveTransfer.js";
+import { checkAndReinstateSchedulerJob, mapUsernoteTypesFormHandler, startTransfer, startTransferMenuHandler, transferUserBatch } from "./interactiveTransfer.js";
 import { handleInstall, handleInstallOrUpgrade } from "./installActions.js";
 import { appSettings } from "./settings.js";
 import { handleModActions } from "./handleModActions.js";
@@ -41,6 +41,11 @@ Devvit.addSchedulerJob({
 Devvit.addSchedulerJob({
     name: "updateWikiPage",
     onRun: updateWikiPage,
+});
+
+Devvit.addSchedulerJob({
+    name: "CheckAndReinstateSchedulerJob",
+    onRun: checkAndReinstateSchedulerJob,
 });
 
 Devvit.configure({

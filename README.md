@@ -48,6 +48,12 @@ This app is open source, you can find it on GitHub [here](https://github.com/fsv
 
 ## Change History
 
+### v1.0.3
+
+* Transfer older notes first, so that they appear in the right order
+* More reliable job resume logic in case scheduler jobs get "lost"
+* Send post-transfer modmail to inbox, not Mod Discussions
+
 ### v1.0.1
 
 * Fixed a bug that caused a generic error message when Toolbox isn't fully configured, or there are no usernotes
