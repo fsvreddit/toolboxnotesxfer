@@ -23,7 +23,7 @@ export async function handleWikiRevise (event: ModAction, context: TriggerContex
     }
 
     if (event.moderator?.name === context.appName) {
-        await finishTransfer(false, context);
+        await finishTransfer(context);
         return;
     }
 
@@ -44,7 +44,7 @@ export async function handleWikiRevise (event: ModAction, context: TriggerContex
         return;
     }
 
-    console.log("Wiki Revise: Toolbox wiki page updated with changes.");
+    console.log("Wiki Revise: Toolbox wiki page updated since last check.");
 
     const allUserNotes = await getAllNotes(context);
     const usersToProcess = usersWithNotesInScope(allUserNotes, fromDate);
@@ -52,7 +52,7 @@ export async function handleWikiRevise (event: ModAction, context: TriggerContex
     if (usersToProcess.length === 0) {
         console.log("Wiki Revise: No new notes.");
         await context.redis.set(WIKI_PAGE_REVISION, wikiPage.revisionId);
-        await finishTransfer(false, context);
+        await finishTransfer(context);
         return;
     }
 
@@ -73,6 +73,6 @@ export async function handleWikiRevise (event: ModAction, context: TriggerContex
     await context.redis.set(UPDATE_WIKI_PAGE_FLAG, "true");
     await recordSyncStarted(context);
 
-    await finishTransfer(false, context);
+    await finishTransfer(context);
     await context.redis.set(LAST_SYNC_COMPLETED, new Date().getTime().toString());
 }

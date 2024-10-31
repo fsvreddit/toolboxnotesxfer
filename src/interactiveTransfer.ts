@@ -1,5 +1,5 @@
 import { Context, FormField, FormOnSubmitEvent, JobContext, JSONObject, MenuItemOnPressEvent, TriggerContext } from "@devvit/public-api";
-import { BULK_FINISHED, DEFAULT_USERNOTE_TYPES, FINISHED_TRANSFER, MAPPING_KEY, NOTES_ERRORED, NOTES_QUEUE, NOTES_TRANSFERRED, SYNC_STARTED, USERS_SKIPPED, USERS_TRANSFERRED } from "./constants.js";
+import { BULK_FINISHED, DEFAULT_USERNOTE_TYPES, FINISHED_TRANSFER, MAPPING_KEY, NOTES_ERRORED, NOTES_QUEUE, NOTES_TRANSFERRED, SYNC_STARTED, TRANSFER_USERS_CRON, USERS_SKIPPED, USERS_TRANSFERRED } from "./constants.js";
 import { finishTransfer, getAllNotes, NoteTypeMapping, recordBulkFinished, redditNativeLabels, transferNotesForUser, usersWithNotesInScope } from "./notesTransfer.js";
 import { confirmForm, mapUsernoteTypesForm } from "./main.js";
 import { AppSetting } from "./settings.js";
@@ -20,7 +20,7 @@ export async function startTransferMenuHandler (_: MenuItemOnPressEvent, context
         if (!jobs.some(job => job.name === "TransferUsers")) {
             await context.scheduler.runJob({
                 name: "TransferUsers",
-                runAt: new Date(),
+                cron: TRANSFER_USERS_CRON,
             });
         }
         return;
@@ -166,7 +166,7 @@ export async function transferUserBatch (_: unknown, context: JobContext) {
     const queue = await context.redis.zRange(NOTES_QUEUE, 0, batchSize - 1);
     if (queue.length === 0) {
         console.log("Interactive Transfer: Queue is empty!");
-        await finishTransfer(true, context);
+        await finishTransfer(context, true, true);
         await sendModmail(context);
         return;
     }
@@ -196,13 +196,8 @@ export async function transferUserBatch (_: unknown, context: JobContext) {
     if (queue.length < batchSize) {
         // This was the last batch.
         console.log("Interactive Transfer: Finished transfer!");
-        await finishTransfer(true, context);
+        await finishTransfer(context, true, true);
         await sendModmail(context);
-    } else {
-        await context.scheduler.runJob({
-            name: "TransferUsers",
-            runAt: addSeconds(new Date(), 30),
-        });
     }
 }
 
@@ -259,20 +254,4 @@ async function sendModmail (context: TriggerContext) {
     ]);
 
     await recordBulkFinished(context);
-}
-
-export async function checkAndReinstateSchedulerJob (_: unknown, context: TriggerContext) {
-    const notesStillToTransfer = await context.redis.zCard(NOTES_QUEUE);
-    if (!notesStillToTransfer) {
-        // No need to set up job.
-        return;
-    }
-
-    const currentJobs = await context.scheduler.listJobs();
-    if (!currentJobs.some(job => job.name === "TransferUsers")) {
-        await context.scheduler.runJob({
-            name: "TransferUsers",
-            runAt: new Date(),
-        });
-    }
 }

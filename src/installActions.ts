@@ -1,6 +1,6 @@
 import { TriggerContext } from "@devvit/public-api";
 import { AppInstall, AppUpgrade } from "@devvit/protos";
-import { NOTES_QUEUE } from "./constants.js";
+import { NOTES_QUEUE, TRANSFER_USERS_CRON } from "./constants.js";
 import { importWikiPageOnInstall } from "./wikiPage.js";
 import { storeInitialMappings } from "./noteMappings.js";
 
@@ -18,16 +18,11 @@ export async function handleInstallOrUpgrade (_: AppInstall | AppUpgrade, contex
         cron: "0 0 * * *",
     });
 
-    await context.scheduler.runJob({
-        name: "CheckAndReinstateSchedulerJob",
-        cron: "5 0/6 * * *",
-    });
-
     const queuedNotes = await context.redis.zCard(NOTES_QUEUE);
     if (queuedNotes) {
         await context.scheduler.runJob({
             name: "TransferUsers",
-            runAt: new Date(),
+            cron: TRANSFER_USERS_CRON,
         });
     }
 

@@ -48,11 +48,11 @@ This app is open source, you can find it on GitHub [here](https://github.com/fsv
 
 ## Change History
 
-### v1.0.3
+### Next Version
 
 * Transfer older notes first, so that they appear in the right order
-* More reliable job resume logic in case scheduler jobs get "lost"
 * Send post-transfer modmail to inbox, not Mod Discussions
+* Use more reliable method of pacing note transfers
 
 ### v1.0.1
 

@@ -146,11 +146,17 @@ export async function transferNotesForUser (username: string, subreddit: string,
 export async function updateWikiPage (_: unknown, context: JobContext) {
     const wikiPageNeedsUpdate = await context.redis.get(UPDATE_WIKI_PAGE_FLAG);
     if (wikiPageNeedsUpdate) {
-        await finishTransfer(true, context);
+        await finishTransfer(context, true);
     }
 }
 
-export async function finishTransfer (updateWikiPageNow: boolean, context: JobContext) {
+export async function finishTransfer (context: JobContext, updateWikiPageNow?: boolean, cancelJobs?: boolean) {
+    if (cancelJobs) {
+        const currentJobs = await context.scheduler.listJobs();
+        const transferJobs = currentJobs.filter(job => job.name === "TransferUsers");
+        await Promise.all(transferJobs.map(job => context.scheduler.cancelJob(job.id)));
+    }
+
     const completedDate = new Date().getTime();
     await context.redis.set(FINISHED_TRANSFER, completedDate.toString());
 

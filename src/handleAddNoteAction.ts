@@ -72,7 +72,7 @@ export async function handleAddNote (event: ModAction, context: TriggerContext) 
 
     const toolbox = new ToolboxClient(context.reddit);
     await toolbox.addUsernote(event.subreddit.name, newUserNote, `"create new note on ${modNote.user.name}" via Toolbox Notes Transfer`);
-    await finishTransfer(false, context);
+    await finishTransfer(context);
     await recordSyncStarted(context);
     await context.redis.set(LAST_SYNC_COMPLETED, new Date().getTime().toString());
 
