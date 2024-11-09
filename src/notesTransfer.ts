@@ -1,5 +1,5 @@
 import { CreateModNoteOptions, JobContext, TriggerContext, User, UserNoteLabel } from "@devvit/public-api";
-import { BULK_FINISHED, FINISHED_TRANSFER, NOTES_ERRORED, NOTES_TRANSFERRED, SYNC_STARTED, UPDATE_WIKI_PAGE_FLAG, USERS_SKIPPED, USERS_TRANSFERRED } from "./constants.js";
+import { BULK_FINISHED, FINISHED_TRANSFER, NOTES_ERRORED, NOTES_TRANSFERRED, SYNC_STARTED, TRANSFER_USERS_JOB, UPDATE_WIKI_PAGE_FLAG, USERS_SKIPPED, USERS_TRANSFERRED } from "./constants.js";
 import { saveWikiPage } from "./wikiPage.js";
 import { format, isSameDay } from "date-fns";
 import { decompressBlob, ToolboxClient, Usernotes } from "toolbox-devvit";
@@ -82,6 +82,7 @@ export async function transferNotesForUser (username: string, subreddit: string,
 
     if (usersNotes.length === 0) {
         // Shouldn't be possible if we got here.
+        console.log(`Notes Transfer: No notes found for ${username}`);
         return;
     }
 
@@ -153,7 +154,7 @@ export async function updateWikiPage (_: unknown, context: JobContext) {
 export async function finishTransfer (context: JobContext, updateWikiPageNow?: boolean, cancelJobs?: boolean) {
     if (cancelJobs) {
         const currentJobs = await context.scheduler.listJobs();
-        const transferJobs = currentJobs.filter(job => job.name === "TransferUsers");
+        const transferJobs = currentJobs.filter(job => job.name === TRANSFER_USERS_JOB);
         await Promise.all(transferJobs.map(job => context.scheduler.cancelJob(job.id)));
     }
 

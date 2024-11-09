@@ -4,6 +4,7 @@ import { handleInstall, handleInstallOrUpgrade } from "./installActions.js";
 import { appSettings } from "./settings.js";
 import { handleModActions } from "./handleModActions.js";
 import { updateWikiPage } from "./notesTransfer.js";
+import { TRANSFER_USERS_JOB } from "./constants.js";
 
 Devvit.addSettings(appSettings);
 
@@ -34,7 +35,7 @@ Devvit.addMenuItem({
 });
 
 Devvit.addSchedulerJob({
-    name: "TransferUsers",
+    name: TRANSFER_USERS_JOB,
     onRun: transferUserBatch,
 });
 

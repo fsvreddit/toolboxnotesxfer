@@ -1,9 +1,8 @@
 import { Context, FormField, FormOnSubmitEvent, JobContext, JSONObject, MenuItemOnPressEvent, TriggerContext } from "@devvit/public-api";
-import { BULK_FINISHED, DEFAULT_USERNOTE_TYPES, FINISHED_TRANSFER, MAPPING_KEY, NOTES_ERRORED, NOTES_QUEUE, NOTES_TRANSFERRED, SYNC_STARTED, TRANSFER_USERS_CRON, USERS_SKIPPED, USERS_TRANSFERRED } from "./constants.js";
+import { BULK_FINISHED, DEFAULT_USERNOTE_TYPES, FINISHED_TRANSFER, MAPPING_KEY, NOTES_ERRORED, NOTES_QUEUE, NOTES_TRANSFERRED, SYNC_STARTED, TRANSFER_USERS_CRON, TRANSFER_USERS_JOB, USERS_SKIPPED, USERS_TRANSFERRED } from "./constants.js";
 import { finishTransfer, getAllNotes, NoteTypeMapping, recordBulkFinished, redditNativeLabels, transferNotesForUser, usersWithNotesInScope } from "./notesTransfer.js";
 import { confirmForm, mapUsernoteTypesForm } from "./main.js";
 import { AppSetting } from "./settings.js";
-import { addSeconds } from "date-fns";
 import pluralize from "pluralize";
 import { RawUsernoteType } from "toolbox-devvit/dist/types/RawSubredditConfig.js";
 import _ from "lodash";
@@ -17,11 +16,12 @@ export async function startTransferMenuHandler (_: MenuItemOnPressEvent, context
 
         // Check if jobs are queued. If not, requeue.
         const jobs = await context.scheduler.listJobs();
-        if (!jobs.some(job => job.name === "TransferUsers")) {
+        if (!jobs.some(job => job.name === TRANSFER_USERS_JOB)) {
             await context.scheduler.runJob({
-                name: "TransferUsers",
+                name: TRANSFER_USERS_JOB,
                 cron: TRANSFER_USERS_CRON,
             });
+            console.log("Interactive Transfer: Job was missing, and has been rescheduled");
         }
         return;
     }
@@ -156,13 +156,14 @@ export async function startTransfer (_: FormOnSubmitEvent<JSONObject>, context: 
 
     await context.redis.zAdd(NOTES_QUEUE, ...distinctUsers.map(user => ({ member: user, score: 0 })));
     await context.scheduler.runJob({
-        name: "TransferUsers",
-        runAt: addSeconds(new Date(), 1),
+        name: TRANSFER_USERS_JOB,
+        cron: TRANSFER_USERS_CRON,
     });
+    console.log("Interactive Transfer: Job scheduled.");
 }
 
 export async function transferUserBatch (_: unknown, context: JobContext) {
-    const batchSize = 50;
+    const batchSize = 75;
     const queue = await context.redis.zRange(NOTES_QUEUE, 0, batchSize - 1);
     if (queue.length === 0) {
         console.log("Interactive Transfer: Queue is empty!");
@@ -185,6 +186,8 @@ export async function transferUserBatch (_: unknown, context: JobContext) {
     const firstSyncVal = await context.redis.get(SYNC_STARTED);
     const timeTo = firstSyncVal ? new Date(parseInt(firstSyncVal)) : undefined;
 
+    console.log(`Interactive Transfer: Processing patch with range ${timeFrom} to ${timeTo}`);
+
     const subredditName = context.subredditName ?? (await context.reddit.getCurrentSubreddit()).name;
     for (const user of queue.map(queueItem => queueItem.member)) {
         await transferNotesForUser(user, subredditName, allUserNotes, noteTypeMapping, timeFrom, timeTo, context);
@@ -198,6 +201,14 @@ export async function transferUserBatch (_: unknown, context: JobContext) {
         console.log("Interactive Transfer: Finished transfer!");
         await finishTransfer(context, true, true);
         await sendModmail(context);
+    }
+
+    // Duplicate job mitigation: Check for more than one and cancel extra instances.
+    const currentJobs = (await context.scheduler.listJobs()).filter(job => job.name === TRANSFER_USERS_JOB);
+    if (currentJobs.length > 1) {
+        const jobsToCancel = currentJobs.slice(1);
+        await Promise.all(jobsToCancel.map(job => context.scheduler.cancelJob(job.id)));
+        console.log(`Interactive Transfer: Cancelled ${jobsToCancel.length} rogue ${pluralize("job", jobsToCancel.length)}`);
     }
 }
 

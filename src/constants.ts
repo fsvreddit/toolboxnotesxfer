@@ -16,7 +16,8 @@ export const WIKI_PAGE_NAME = "toolboxnotesxfer";
 export const WIKI_PAGE_REVISION = "wikiPageRevision";
 export const UPDATE_WIKI_PAGE_FLAG = "wikiPageUpdate";
 
-export const TRANSFER_USERS_CRON = "*/30 * * * * *";
+export const TRANSFER_USERS_JOB = "TransferUsers";
+export const TRANSFER_USERS_CRON = "* * * * *";
 
 // Taken from toolbox-devvit's config.ts file as this is not exported.
 export const DEFAULT_USERNOTE_TYPES: RawUsernoteType[] = [
