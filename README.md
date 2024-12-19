@@ -48,6 +48,10 @@ This app is open source, you can find it on GitHub [here](https://github.com/fsv
 
 ## Change History
 
+### v1.1.2
+
+* Fixes a security vulnerability relating to menu items
+
 ### v1.1.1
 
 * Use more reliable method of pacing note transfers.
