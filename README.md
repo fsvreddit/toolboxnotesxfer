@@ -48,6 +48,10 @@ This app is open source, you can find it on GitHub [here](https://github.com/fsv
 
 ## Change History
 
+### v1.1.3
+
+* Update Devvit version (no user facing changes)
+
 ### v1.1.2
 
 * Fixes a security vulnerability relating to menu items
