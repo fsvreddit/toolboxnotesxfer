@@ -44,9 +44,13 @@ Usernotes can only be transferred for active users. Suspended, shadowbanned and 
 
 ## Source Code
 
-This app is open source, you can find it on GitHub [here](https://github.com/fsvreddit/toolboxnotesxfer).
+This app is open source, [you can find it on GitHub here](https://github.com/fsvreddit/toolboxnotesxfer).
 
 ## Change History
+
+### v1.1.4
+
+* Mitigate against duplicate actions if the Developer Platform is having issues
 
 ### v1.1.3
 

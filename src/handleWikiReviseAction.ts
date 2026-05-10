@@ -22,7 +22,7 @@ export async function handleWikiRevise (event: ModAction, context: TriggerContex
         return;
     }
 
-    if (event.moderator?.name === context.appName) {
+    if (event.moderator?.name === context.appSlug) {
         await finishTransfer(context);
         return;
     }

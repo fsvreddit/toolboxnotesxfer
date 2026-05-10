@@ -1,14 +1,15 @@
 import { ModAction } from "@devvit/protos";
-import { Post, Comment, TriggerContext } from "@devvit/public-api";
+import { TriggerContext } from "@devvit/public-api";
 import { finishTransfer, NoteTypeMapping, recordSyncStarted } from "./notesTransfer.js";
 import { LAST_SYNC_COMPLETED, MAPPING_KEY } from "./constants.js";
 import { AppSetting } from "./settings.js";
 import { ToolboxClient, UsernoteInit } from "toolbox-devvit";
-import { isCommentId, isLinkId } from "@devvit/shared-types/tid.js";
+import { isCommentId, isLinkId } from "@devvit/public-api/types/tid.js";
 import { addHours, subSeconds } from "date-fns";
+import { getPostOrCommentById } from "@fsvreddit/fsv-devvit-helpers";
 
 export async function handleAddNote (event: ModAction, context: TriggerContext) {
-    if (event.action !== "addnote" || !event.subreddit || !event.targetUser || event.moderator?.name === context.appName) {
+    if (event.action !== "addnote" || !event.subreddit || !event.targetUser || event.moderator?.name === context.appSlug) {
         return;
     }
 
@@ -82,17 +83,10 @@ export async function handleAddNote (event: ModAction, context: TriggerContext) 
 }
 
 async function getPermalinkFromRedditId (redditId: string | undefined, context: TriggerContext): Promise<string | undefined> {
-    if (!redditId) {
+    if (!redditId || (!isCommentId(redditId) && !isLinkId(redditId))) {
         return;
     }
 
-    let target: Post | Comment | undefined;
-
-    if (isCommentId(redditId)) {
-        target = await context.reddit.getCommentById(redditId);
-    } else if (isLinkId(redditId)) {
-        target = await context.reddit.getPostById(redditId);
-    }
-
-    return target?.permalink;
+    const target = await getPostOrCommentById(context.reddit, redditId);
+    return target.permalink;
 }

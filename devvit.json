@@ -1,0 +1,15 @@
+{
+  "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
+  "name": "toolboxnotesxfer",
+  "blocks": {
+    "entry": "src/main.ts",
+    "triggers": [
+      "onAppInstall",
+      "onAppUpgrade",
+      "onModAction"
+    ]
+  },
+  "dev": {
+    "subreddit": "toolboxnotesxfer_dev"
+  }
+}
